@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env from project root so DEEPSEEK_API_KEY is available to the
+# orchestrator's _default_llm_client(). Without this, build_artifacts.py
+# runs the fallback LLM and the demo JSON shows llm_used=False even when
+# a real key is configured.
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from marketlens.agent.orchestrator import MarketLensAgentOrchestrator
 from marketlens.export import evidence_to_json, write_html_brief, write_json, write_markdown_brief
