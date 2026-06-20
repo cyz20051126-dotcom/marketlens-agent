@@ -3,6 +3,12 @@
 Status: ready for user review
 Date: 2026-06-20
 
+> **v2.1 Update (2026-06-20)**: This document is the original v2 design. The v2.1 implementation has these changes:
+> - **Search**: Firecrawl → DuckDuckGo HTML (free, no API key; see `plans/2026-06-20-marketlens-real-llm-websearch.md`)
+> - **LLM**: Triage/Planner/Extractor/Writer all call DeepSeek (original design used rule-based fast paths)
+> - **FinanceLens**: spec §7.1 fully completed (unit economics / expansion model / DCF assumptions incl. tax rate + reinvestment rate / 3 sensitivity matrices)
+> - All references to Firecrawl / FirecrawlSearchTool in this document have been replaced by WebSearchTool + DuckDuckGo in the actual implementation.
+
 ## 1. One-Line Positioning
 
 MarketLens Agent is a self-built, lightweight multi-agent research system for Chinese fresh beverage brands. It combines Agentic RAG, web research, evidence management, and finance-oriented analysis so the project can be presented as an AI Agent portfolio project, not only as a report generator.

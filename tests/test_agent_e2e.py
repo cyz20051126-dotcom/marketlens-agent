@@ -57,7 +57,7 @@ def _make_orchestrator(
         evidence_path=ROOT / "data" / "evidence.csv",
         finance_metrics_path=ROOT / "data" / "finance_metrics.csv",
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "websearch",
+        search_cache_dir=tmp_path / "websearch",
         llm_client=MockLLMClient(response=llm_response),
         web_search_tool=E2EWebSearchTool(),
     )
@@ -224,7 +224,7 @@ def test_e2e_degraded_search_does_not_crash_run(tmp_path):
         evidence_path=ROOT / "data" / "evidence.csv",
         finance_metrics_path=ROOT / "data" / "finance_metrics.csv",
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "websearch",
+        search_cache_dir=tmp_path / "websearch",
         llm_client=MockLLMClient(
             response=json.dumps(
                 {

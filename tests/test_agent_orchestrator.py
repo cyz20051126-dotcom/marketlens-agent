@@ -25,7 +25,7 @@ def make_orchestrator(
         evidence_path=ROOT / "data" / "evidence.csv",
         finance_metrics_path=ROOT / "data" / "finance_metrics.csv",
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
         llm_client=llm_client or FallbackLLMClient(),
         web_search_tool=web_search_tool,
     )

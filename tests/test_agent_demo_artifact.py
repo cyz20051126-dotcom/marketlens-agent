@@ -10,7 +10,7 @@ def test_build_agent_demo_returns_serialized_agent_run(tmp_path):
     payload = build_agent_demo(
         ROOT,
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
     )
 
     assert payload["run_id"].startswith("run_")

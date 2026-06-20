@@ -25,7 +25,7 @@ orchestrator = MarketLensAgentOrchestrator(
     evidence_path=root / "data" / "evidence.csv",
     finance_metrics_path=root / "data" / "finance_metrics.csv",
     session_dir=root / "work" / "agent_sessions",
-    firecrawl_output_dir=root / "work" / "websearch",
+    search_cache_dir=root / "work" / "websearch",
 )
 
 queries = [

@@ -288,11 +288,6 @@ class WebSearchTool:
         )
 
 
-# Backward-compatible alias so existing imports keep working during the
-# migration. New code should use WebSearchTool.
-FirecrawlSearchTool = WebSearchTool
-
-
 # --- DuckDuckGo search helpers --------------------------------------------
 
 _DDG_RESULT_PATTERN = re.compile(

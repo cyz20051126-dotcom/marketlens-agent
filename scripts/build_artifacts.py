@@ -27,13 +27,13 @@ def copy_artifacts(processed_dir: Path, target_dir: Path) -> None:
 def build_agent_demo(
     root: Path,
     session_dir: Path | None = None,
-    firecrawl_output_dir: Path | None = None,
+    search_cache_dir: Path | None = None,
 ) -> dict:
     orchestrator = MarketLensAgentOrchestrator(
         evidence_path=root / "data" / "evidence.csv",
         finance_metrics_path=root / "data" / "finance_metrics.csv",
         session_dir=session_dir or root / "work" / "agent_sessions",
-        firecrawl_output_dir=firecrawl_output_dir or root / ".firecrawl",
+        search_cache_dir=search_cache_dir or root / ".search_cache",
     )
     query = "\u5e2e\u6211\u7528 DCF \u5206\u6790\u745e\u5e78\u4ef7\u683c\u6218\u5bf9\u4f30\u503c\u7684\u5f71\u54cd"
     return orchestrator.answer(query).to_dict()

@@ -3,6 +3,12 @@
 状态：待用户复核
 日期：2026-06-20
 
+> **v2.1 更新（2026-06-20）**：本文档为 v2 原始设计。v2.1 实现有以下变更：
+> - **搜索**：Firecrawl → DuckDuckGo HTML（免费、无 key，见 `plans/2026-06-20-marketlens-real-llm-websearch.md`）
+> - **LLM**：Triage/Planner/Extractor/Writer 全部接 DeepSeek（原设计为规则快速路径）
+> - **FinanceLens**：spec §7.1 四块全完成（单店经济/扩张模型/DCF假设含税率+再投资率/3个敏感性矩阵）
+> - 正文中提到的 Firecrawl / FirecrawlSearchTool 均已被 WebSearchTool + DuckDuckGo 替代
+
 ## 1. 一句话定位
 
 MarketLens Agent 是一个面向中国新茶饮/连锁咖啡品牌的轻量多智能体研究系统。它结合 Agentic RAG、网页研究、结构化证据库和金融分析视角，目标是成为一个可以用于 AI Agent / AI 工作流 / 商业分析相关实习投递的作品，而不是单纯的行业简报生成器。

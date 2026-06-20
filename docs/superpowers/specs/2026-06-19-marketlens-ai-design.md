@@ -3,6 +3,8 @@
 Status: Draft for user review
 Date: 2026-06-19
 
+> **Note**: This is the v1 design spec. The project has since evolved to v2.1 (MarketLens Agent). See `2026-06-20-marketlens-agent-v2-design.md` for the current design. v1 references to Firecrawl have been replaced by DuckDuckGo HTML in the actual implementation.
+
 ## 1. Product Positioning
 
 MarketLens AI is a portfolio-grade competitive intelligence workflow for the fresh beverage market, focused on Chinese tea and coffee chains.

@@ -9,7 +9,7 @@ MARGIN_QUERY = "\u745e\u5e78\u4ef7\u683c\u6218\u5bf9\u5229\u6da6\u7387\u6709\u4e
 def test_agent_chat_endpoint_returns_run_payload(tmp_path):
     app = create_app(
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
     )
     client = TestClient(app)
 
@@ -25,7 +25,7 @@ def test_agent_chat_endpoint_returns_run_payload(tmp_path):
 def test_agent_chat_endpoint_rejects_empty_query(tmp_path):
     app = create_app(
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
     )
     client = TestClient(app)
 
@@ -37,7 +37,7 @@ def test_agent_chat_endpoint_rejects_empty_query(tmp_path):
 def test_agent_run_endpoint_loads_saved_run(tmp_path):
     app = create_app(
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
     )
     client = TestClient(app)
 
@@ -51,7 +51,7 @@ def test_agent_run_endpoint_loads_saved_run(tmp_path):
 def test_agent_run_endpoint_rejects_missing_run(tmp_path):
     app = create_app(
         session_dir=tmp_path / "sessions",
-        firecrawl_output_dir=tmp_path / "firecrawl",
+        search_cache_dir=tmp_path / "search_cache",
     )
     client = TestClient(app)
 

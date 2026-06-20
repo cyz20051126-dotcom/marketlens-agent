@@ -49,7 +49,7 @@ class MarketLensAgentOrchestrator:
         evidence_path: Path,
         finance_metrics_path: Path,
         session_dir: Path,
-        firecrawl_output_dir: Path,
+        search_cache_dir: Path,
         llm_client: Any = None,
         web_search_tool: Any = None,
         extracted_evidence_path: Path | None = None,
@@ -57,10 +57,10 @@ class MarketLensAgentOrchestrator:
         self.evidence_path = Path(evidence_path)
         self.finance_metrics_path = Path(finance_metrics_path)
         self.session_store = SessionStore(Path(session_dir))
-        self.firecrawl_output_dir = Path(firecrawl_output_dir)
+        self.search_cache_dir = Path(search_cache_dir)
         self.llm_client = llm_client or _default_llm_client()
         self.web_search_tool = web_search_tool or WebSearchTool(
-            self.firecrawl_output_dir
+            self.search_cache_dir
         )
         # Extracted evidence is written to a separate file so the seed
         # evidence.csv stays untouched. Defaults to <session_dir>/../extracted_evidence.csv

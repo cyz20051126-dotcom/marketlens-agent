@@ -20,7 +20,7 @@ class ChatRequest(BaseModel):
 
 def create_app(
     session_dir: Path | None = None,
-    firecrawl_output_dir: Path | None = None,
+    search_cache_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="MarketLens Agent API")
     root = Path(__file__).resolve().parents[2]
@@ -28,7 +28,7 @@ def create_app(
         evidence_path=root / "data" / "evidence.csv",
         finance_metrics_path=root / "data" / "finance_metrics.csv",
         session_dir=session_dir or root / "work" / "agent_sessions",
-        firecrawl_output_dir=firecrawl_output_dir or root / ".firecrawl",
+        search_cache_dir=search_cache_dir or root / ".search_cache",
     )
 
     @app.post("/api/agent/chat")
