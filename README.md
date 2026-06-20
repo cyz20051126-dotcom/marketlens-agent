@@ -38,7 +38,7 @@
 | 搜索 | DuckDuckGo HTML 接口 | 免费、无 key |
 | 后端 | FastAPI + uvicorn | 端口 8765 |
 | 前端 | React + Vite + TypeScript | 端口 5173，proxy 到后端 |
-| 测试 | pytest | 103 tests passing |
+| 测试 | pytest | 113 tests passing |
 | Runtime | 自研（BaseAgent / ToolRegistry / SessionStore / TraceLogger / TodoBoard） | 见 `src/marketlens/agent/runtime.py` |
 
 ## 项目结构
@@ -60,7 +60,7 @@ web/                  # React + Vite 前端
 scripts/
   smoke_test_deepseek.py   # 验证 DeepSeek key
   demo_real_llm.py         # 真端到端演示
-tests/                # 103 个测试
+tests/                # 113 个测试
 ```
 
 ## 本地运行
@@ -125,13 +125,17 @@ python scripts/demo_real_llm.py
 pytest
 ```
 
-103 个测试全过，覆盖：
+113 个测试全过，覆盖：
 - LLM client 层（DeepSeek mock / Fallback / Mock）
 - WebSearchTool（DuckDuckGo 解析 / 网络失败降级）
 - 四个 agent 的 LLM 路径 + 规则降级
 - Orchestrator 全链路（本地证据路径 / 研究路径 / 金融路径）
 - FinanceLens spec §7.1（单店经济 / 税率 / 再投资率 / 3 个敏感性矩阵）
 - 端到端 E2E（agent 顺序 / 金融假设 / 中文引用 / 真延迟 / 降级搜索）
+- Verifier 加严（source_type 白名单 / confidence 阈值 / 重复 URL）
+- Todo task_type 匹配（中文标题不再卡 pending）
+- LLM provenance 序列化（llm_provider / llm_used / fallback_reason）
+- Writer 反幻觉 prompt（数字纪律规则）
 
 ## 运行时产物
 
@@ -146,6 +150,17 @@ pytest
 ## 来源纪律
 
 只使用公开信息。弱来源不会被隐藏，而是通过 `needs_review` 或置信度体现。WriterAgent 只引用 `reviewed` 且带有效 URL 的证据；FinanceLens 输出是研究训练用的假设框架，不构成投资建议。
+
+## 已知局限
+
+这个项目是研究训练作品，不是生产系统。以下局限是已知的，列出来是为了让审查者清楚边界，也作为下一步迭代的入口：
+
+- **没有 Evaluator**：spec 提过 eval set，但未实现。判断答案质量目前靠 trace 审查和证据引用检查，没有量化指标（如 faithfulness / citation coverage）
+- **Writer 单轮**：没有 self-critique / refine 循环。如果 LLM 第一轮答得不好，没有自动纠正机制，只能靠 prompt 约束和人工看 trace
+- **DuckDuckGo HTML 解析**：免费无 key，但结果质量偶尔偏题。Verifier 加严后能挡掉一部分低质量证据，但搜索质量本身没有保证
+- **FinanceLens 是 sensitivity proxy 不是完整 DCF**：用的是 Gordon-style 敏感性公式，不是 5 年 FCF forecast + terminal value + equity value 完整模型。代码注释和前端文案都已标注为 "DCF-style 敏感性分析"
+- **没有 Docker / 一键部署**：本地启动需要手动配 venv + npm install + 两个进程。30 秒拉起来看的门槛偏高
+- **session 是本地 JSON 文件**：没有数据库。适合演示和回放，不适合高并发或多用户
 
 ## 设计文档
 
