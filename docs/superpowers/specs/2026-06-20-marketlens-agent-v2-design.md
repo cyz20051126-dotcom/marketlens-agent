@@ -11,11 +11,7 @@ Date: 2026-06-20
 
 ## 1. One-Line Positioning
 
-MarketLens Agent is a self-built, lightweight multi-agent research system for Chinese fresh beverage brands. It combines Agentic RAG, web research, evidence management, and finance-oriented analysis so the project can be presented as an AI Agent portfolio project, not only as a report generator.
-
-Chinese interview phrasing:
-
-> 我参考 HelloAgents 和 Deep Research Agent 的架构思路，自研了一个轻量多智能体研究框架，用在新消费品牌研究场景里。系统可以通过对话接收问题，判断本地证据库是否足够，不足时自动规划搜索任务、调用工具抓取资料、抽取结构化证据、复核来源，再把经营证据转成单店模型、加盟模型和 DCF 假设，最后输出带引用的研究回答或报告。
+MarketLens Agent is a self-built, lightweight multi-agent research system for Chinese fresh beverage brands. It combines Agentic RAG, web research, evidence management, and finance-oriented analysis: it takes a research question via chat, checks whether the local evidence database is sufficient, and when it is not, automatically plans search tasks, calls tools to fetch public material, extracts structured evidence, verifies sources, then turns operating evidence into per-store / franchise / DCF assumptions and outputs a cited research answer or report.
 
 ## 2. Why v1 Is Not Enough
 
@@ -28,23 +24,9 @@ The existing MarketLens v1 is useful but too close to a source-to-brief workflow
 5. It does not yet include a real AI chat entry point over the evidence database.
 6. It does not yet turn business evidence into finance-style assumptions.
 
-The v2 goal is to make the project credible for AI Agent / AI workflow / business analysis internship roles.
+The v2 goal is to make the project a real agent system with runtime, tool calling, evidence flow, and observability, rather than a source-to-brief report generator.
 
 ## 3. Research Findings
-
-### 3.1 JD Signals
-
-| Source | What the JD asks for | Project implication |
-| --- | --- | --- |
-| Leqee AI Agent roles | Profile, Planning, Memory, Tool Calling / MCP, RAG, Agent framework, evaluation | Build explicit runtime modules instead of only a UI. |
-| BaiRong AI Agent operations intern | Task decomposition, tool calling, response accuracy, multi-turn dialogue, structured output, product capability evaluation | Add chat, trace logs, structured evidence, and an evaluation set. |
-| Remote AI Agent intern via CUHK Shenzhen careers | Reusable Agent and automation workflows, AI knowledge base, prompt/tool workflow, database field/tag/index thinking | Add Evidence DB, searchable memory, and reusable research workflows. |
-
-Primary links:
-
-- https://www.wondercv.com/xiaozhao/leqee-2026-spring-ai-agent-10542-243500/
-- https://www.shixiseng.com/intern/inn_ebjduo0kjxlu
-- https://career.cuhk.edu.cn/job/view/id/467284
 
 ### 3.2 Agent Architecture References
 
@@ -53,7 +35,7 @@ Primary links:
 | HelloAgents Chapter 14 | TODO Planner, Task Summarizer, Report Writer, SearchTool, NoteTool | Use Planner/Searcher/Extractor/Verifier/FinanceLens/Writer agents. |
 | LangChain Deep Agents | Decompose research questions, delegate to sub-agents, synthesize citations | Keep chat as entry; let orchestrator delegate specialized tasks. |
 | GPT Researcher | Planner + execution agents + publisher | Add research plan, crawl/search execution, source tracking, final report. |
-| OpenAI Agents SDK | Agent definitions, tools, handoffs, guardrails, state, observability, evals | Recreate the core concepts in a small custom runtime for interview clarity. |
+| OpenAI Agents SDK | Agent definitions, tools, handoffs, guardrails, state, observability, evals | Recreate the core concepts in a small custom runtime to keep the dependency surface minimal and the code readable. |
 | LangGraph | Durable execution, streaming, human-in-the-loop, persistence | Borrow state/trace ideas without requiring LangGraph in v2 MVP. |
 | IBM Agentic RAG | RAG plus agents retrieves from multiple sources and handles complex workflows | Local Evidence DB is the first source; web search is the escalation path. |
 
@@ -157,11 +139,9 @@ The system answers with:
    - finance lens table/chart
    - final report tab
 
-6. Portfolio materials:
-   - README rewrite around Agentic Research
+6. Deliverables:
+   - README
    - architecture diagram
-   - interview talking points
-   - resume bullet
    - demo script
 
 ### 5.2 Out of Scope For v2 MVP
@@ -429,7 +409,7 @@ Display:
   - local evidence Q&A,
   - new research escalation,
   - finance analysis.
-- Resume bullet matches real implemented behavior.
+- README matches real implemented behavior.
 
 ## 12. Implementation Boundaries
 
@@ -441,27 +421,11 @@ v2 should be one implementation plan, but it must be split into clear milestones
 4. Research workflow with Firecrawl tool adapter.
 5. FinanceLensAgent and model outputs.
 6. Frontend Agent Console.
-7. Documentation, resume update, screenshots, tests.
+7. Documentation, screenshots, tests.
 
 Do not start with UI polish. The first milestone must make the Agent loop and trace data real.
 
-## 13. Updated Resume Story
-
-Suggested Chinese resume bullet after v2 is implemented:
-
-> 自研 MarketLens Agent 多智能体研究系统，参考 HelloAgents / Deep Research 架构实现 Triage、Planner、Search、Evidence Extractor、Verifier、FinanceLens、Writer 等 Agent 协作；接入 DeepSeek 与 Firecrawl，支持本地证据库问答、自动搜索补证、结构化证据抽取、工具调用轨迹、会话记忆与带引用的中文研究报告生成，并将茶饮/咖啡品牌经营数据映射为单店模型、加盟模型和 DCF 假设分析。
-
-Shorter version:
-
-> 自研 MarketLens Agent 多智能体研究系统，基于 DeepSeek + Firecrawl 实现 Planner/Search/Extractor/Verifier/FinanceLens/Writer 协作，支持证据库问答、自动补证、工具调用轨迹、会话记忆及品牌单店模型/DCF 假设分析。
-
-## 14. Interview Narrative
-
-60-second version:
-
-> 这个项目最开始只是一个 source-to-brief 工作流，但我后来发现这还不够像真正的 Agent，所以我把它重构成了一个轻量 Agent Runtime。用户可以在 Chat 里提出品牌研究问题，系统会先判断本地证据库是否足够，如果不够就用 Planner 拆任务，再通过 SearchAgent 调 Firecrawl 搜索公开资料，Extractor 抽取结构化证据，Verifier 做来源和冲突检查。涉及金融问题时，FinanceLensAgent 会把门店数、GMV、毛利率、加盟服务收入这些证据转成单店模型和 DCF 假设。前端会展示 todo board、tool calls、trace logs 和 evidence IDs，所以面试官能看到它不是只调 API 写一段总结，而是一个有规划、工具、记忆、证据和可观测性的 Agent 系统。
-
-## 15. Success Criteria
+## 13. Success Criteria
 
 The project is successful when:
 
@@ -473,5 +437,5 @@ The project is successful when:
 6. FinanceLensAgent produces assumption tables linked to evidence.
 7. The final report and answers include citations.
 8. Tests prove the runtime, tools, agents, and UI are not fake placeholders.
-9. The resume bullet can honestly claim multi-agent research, tool calling, memory/trace, evidence extraction, and finance analysis.
+9. The codebase can honestly demonstrate multi-agent research, tool calling, memory/trace, evidence extraction, and finance analysis.
 
