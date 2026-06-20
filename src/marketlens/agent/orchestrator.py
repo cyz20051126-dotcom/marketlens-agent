@@ -1,0 +1,454 @@
+from __future__ import annotations
+
+import os
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+from marketlens.agent.agents import (
+    EvidenceExtractorAgent,
+    FinanceLensAgent,
+    PlannerAgent,
+    SearchAgent,
+    TriageAgent,
+    VerifierAgent,
+    WriterAgent,
+)
+from marketlens.agent.finance import FinanceModelTool, load_finance_metrics
+from marketlens.agent.llm import DeepSeekLLMClient, FallbackLLMClient
+from marketlens.agent.models import (
+    AgentRun,
+    FinanceAssumption,
+    FinanceScenario,
+    ToolCallRecord,
+)
+from marketlens.agent.runtime import TodoBoard, ToolResponse
+from marketlens.agent.session import SessionStore
+from marketlens.agent.tools import (
+    EvidenceSearchTool,
+    EvidenceStoreTool,
+    WebSearchTool,
+)
+from marketlens.agent.trace import TraceLogger
+from marketlens.load import load_evidence
+
+
+def _default_llm_client() -> Any:
+    """Construct the default LLM client. Uses DeepSeek when an API key is
+    present, otherwise falls back to the offline FallbackLLMClient."""
+    if os.environ.get("DEEPSEEK_API_KEY", "").strip():
+        return DeepSeekLLMClient()
+    return FallbackLLMClient()
+
+
+class MarketLensAgentOrchestrator:
+    def __init__(
+        self,
+        evidence_path: Path,
+        finance_metrics_path: Path,
+        session_dir: Path,
+        firecrawl_output_dir: Path,
+        llm_client: Any = None,
+        web_search_tool: Any = None,
+        extracted_evidence_path: Path | None = None,
+    ) -> None:
+        self.evidence_path = Path(evidence_path)
+        self.finance_metrics_path = Path(finance_metrics_path)
+        self.session_store = SessionStore(Path(session_dir))
+        self.firecrawl_output_dir = Path(firecrawl_output_dir)
+        self.llm_client = llm_client or _default_llm_client()
+        self.web_search_tool = web_search_tool or WebSearchTool(
+            self.firecrawl_output_dir
+        )
+        # Extracted evidence is written to a separate file so the seed
+        # evidence.csv stays untouched. Defaults to <session_dir>/../extracted_evidence.csv
+        # which lands under work/ alongside agent_sessions/.
+        if extracted_evidence_path is not None:
+            self.extracted_evidence_path = Path(extracted_evidence_path)
+        else:
+            self.extracted_evidence_path = (
+                Path(session_dir).parent / "extracted_evidence.csv"
+            )
+
+    def answer(self, query: str) -> AgentRun:
+        cleaned_query = query.strip()
+        started_at = _now()
+        run_id = f"run_{uuid4().hex[:10]}"
+        session_id = "local_session"
+        trace = TraceLogger(run_id)
+        todo = TodoBoard(run_id)
+        agents_invoked: list[str] = []
+        tool_calls: list[ToolCallRecord] = []
+
+        rows = load_evidence(self.evidence_path)
+        metrics = load_finance_metrics(self.finance_metrics_path)
+
+        # --- Triage (LLM) ---
+        triage = TriageAgent(self.llm_client)
+        agents_invoked.append(triage.name)
+        triage_start = time.perf_counter()
+        triage_result = triage.run({"query": cleaned_query})
+        triage_latency = max(int((time.perf_counter() - triage_start) * 1000), 1)
+        intent = triage_result["intent"]
+        search_query = triage_result.get("rewritten_query", cleaned_query)
+        trace.record(
+            triage.name,
+            "intent",
+            f"Classified query as {intent}.",
+            cleaned_query,
+            intent,
+            "",
+            "",
+            triage_latency,
+        )
+
+        # --- Local evidence search ---
+        brand_id = _infer_brand_id(cleaned_query)
+        lens = _infer_lens(cleaned_query, intent)
+        evidence_query = _infer_evidence_query(cleaned_query, intent)
+        ev_start = time.perf_counter()
+        evidence_response = EvidenceSearchTool(rows).run(
+            {
+                "query": evidence_query,
+                "brand_id": brand_id,
+                "lens": lens,
+                "limit": 5,
+                "allow_broad_fallback": False,
+            }
+        )
+        ev_latency = max(int((time.perf_counter() - ev_start) * 1000), 1)
+        _record_tool_call(tool_calls, "EvidenceSearchTool", evidence_response, ev_latency)
+        evidence = list(evidence_response.data.get("evidence", []))
+        trace.record(
+            "EvidenceSearchTool",
+            "tool_call",
+            f"Found {len(evidence)} reviewed local evidence rows.",
+            evidence_query,
+            _preview(evidence),
+            "EvidenceSearchTool",
+            "success" if evidence_response.success else "failed",
+            ev_latency,
+        )
+
+        # --- Research workflow: full chain when local evidence is thin ---
+        # Per spec §6 + plan §2.3: trigger only when evidence < 2 (don't
+        # waste a web search when local evidence is sufficient).
+        if len(evidence) < 2:
+            # Planner
+            planner = PlannerAgent(self.llm_client)
+            agents_invoked.append(planner.name)
+            planner_start = time.perf_counter()
+            plan = planner.run({"query": cleaned_query, "intent": intent})
+            planner_latency = max(int((time.perf_counter() - planner_start) * 1000), 1)
+            for task in plan["tasks"]:
+                todo.add(
+                    title=task["title"],
+                    intent=task["intent"],
+                    query=task["query"],
+                    assigned_agent=planner.name,
+                )
+            trace.record(
+                planner.name,
+                "planning",
+                f"Created {len(plan['tasks'])} todo items.",
+                cleaned_query,
+                _preview(plan["tasks"]),
+                "",
+                "success",
+                planner_latency,
+            )
+
+            # Search (DuckDuckGo via SearchAgent)
+            search_agent = SearchAgent(self.web_search_tool)
+            agents_invoked.append(search_agent.name)
+            search_start = time.perf_counter()
+            search_result = search_agent.run({"query": search_query, "limit": 5})
+            search_latency = max(int((time.perf_counter() - search_start) * 1000), 1)
+            search_success = bool(search_result.get("success"))
+            search_results_list = search_result.get("results", [])
+
+            search_response = ToolResponse(
+                success=search_success,
+                data=search_result.get("data", search_result),
+                error=search_result.get("error", ""),
+            )
+            _record_tool_call(
+                tool_calls, "WebSearchTool", search_response, search_latency
+            )
+            _complete_todo(
+                todo,
+                "Search new sources",
+                f"Web search returned {len(search_results_list)} results.",
+                _extract_urls(search_results_list),
+            )
+            trace.record(
+                search_agent.name,
+                "tool_call",
+                f"Web search returned {len(search_results_list)} results.",
+                search_query,
+                _preview(search_results_list),
+                "WebSearchTool",
+                "success" if search_success else "failed",
+                search_latency,
+            )
+
+            # Extractor (LLM) — only when search returned real results
+            if search_results_list:
+                extractor = EvidenceExtractorAgent(self.llm_client)
+                agents_invoked.append(extractor.name)
+                extract_start = time.perf_counter()
+                extract_result = extractor.run(
+                    {
+                        "brand_id": brand_id,
+                        "lens": lens or "risk",
+                        "source_results": search_result,
+                    }
+                )
+                extract_latency = max(
+                    int((time.perf_counter() - extract_start) * 1000), 1
+                )
+                candidates = extract_result.get("evidence", [])
+                _complete_todo(
+                    todo,
+                    "Review local evidence",
+                    f"Extracted {len(candidates)} candidate evidence.",
+                    _extract_urls(candidates),
+                )
+                trace.record(
+                    extractor.name,
+                    "extraction",
+                    f"Extracted {len(candidates)} candidate evidence.",
+                    _preview(search_results_list),
+                    _preview(candidates),
+                    "",
+                    "success",
+                    extract_latency,
+                )
+
+                # Verifier (rules) — approve / reject each candidate
+                verifier = VerifierAgent()
+                agents_invoked.append(verifier.name)
+                verify_start = time.perf_counter()
+                verified_evidence: list[dict[str, Any]] = []
+                for candidate in candidates:
+                    verified = verifier.run({"evidence": candidate})
+                    if verified.get("review_status") == "reviewed":
+                        verified_evidence.append(verified)
+                verify_latency = max(
+                    int((time.perf_counter() - verify_start) * 1000), 1
+                )
+                _complete_todo(
+                    todo,
+                    "Verify evidence",
+                    f"Approved {len(verified_evidence)}/{len(candidates)} candidates.",
+                    _extract_urls(verified_evidence),
+                )
+                trace.record(
+                    verifier.name,
+                    "verification",
+                    f"Approved {len(verified_evidence)}/{len(candidates)} evidence.",
+                    _preview(candidates),
+                    _preview(verified_evidence),
+                    "",
+                    "success",
+                    verify_latency,
+                )
+
+                # Store + merge verified evidence for the Writer
+                store_tool = EvidenceStoreTool(self.extracted_evidence_path)
+                for verified in verified_evidence:
+                    store_response = store_tool.run({"evidence": verified})
+                    if store_response.success:
+                        evidence.append(verified)
+
+        # --- Finance lens ---
+        finance_payload: dict[str, Any] = {"assumptions": [], "scenarios": []}
+        if intent == "finance_analysis_needed":
+            finance_agent = FinanceLensAgent(FinanceModelTool(metrics))
+            agents_invoked.append(finance_agent.name)
+            finance_start = time.perf_counter()
+            finance_payload = finance_agent.run({"brand_id": brand_id})
+            finance_latency = max(int((time.perf_counter() - finance_start) * 1000), 1)
+            finance_response = ToolResponse(
+                success=bool(finance_payload.get("success", True)),
+                data=finance_payload,
+                error=str(finance_payload.get("error", "")),
+            )
+            _record_tool_call(
+                tool_calls, "FinanceModelTool", finance_response, finance_latency
+            )
+            trace.record(
+                finance_agent.name,
+                "finance",
+                f"Generated {len(finance_payload.get('assumptions', []))} finance assumptions.",
+                brand_id,
+                _preview(finance_payload.get("assumptions", [])[:2]),
+                "FinanceModelTool",
+                "success" if finance_response.success else "failed",
+                finance_latency,
+            )
+
+        # --- Writer (LLM) ---
+        writer = WriterAgent(self.llm_client)
+        agents_invoked.append(writer.name)
+        writer_start = time.perf_counter()
+        writer_result = writer.run(
+            {
+                "query": cleaned_query,
+                "intent": intent,
+                "evidence": evidence,
+                "finance": finance_payload,
+            }
+        )
+        writer_latency = max(int((time.perf_counter() - writer_start) * 1000), 1)
+        _complete_todo(
+            todo,
+            "Draft final answer",
+            "Cited {} evidence IDs.".format(
+                len(writer_result["supporting_evidence_ids"])
+            ),
+            [],
+        )
+        trace.record(
+            writer.name,
+            "answer",
+            "Generated cited answer.",
+            cleaned_query,
+            writer_result["answer"],
+            "",
+            "",
+            writer_latency,
+        )
+
+        run = AgentRun(
+            run_id=run_id,
+            session_id=session_id,
+            user_query=cleaned_query,
+            intent=intent,
+            started_at=started_at,
+            completed_at=_now(),
+            status="completed",
+            agents_invoked=agents_invoked,
+            tool_calls=tool_calls,
+            trace_events=trace.events(),
+            todo_items=todo.items(),
+            answer=writer_result["answer"],
+            supporting_evidence_ids=writer_result["supporting_evidence_ids"],
+            finance_assumptions=[
+                FinanceAssumption(**item)
+                for item in finance_payload.get("assumptions", [])
+            ],
+            finance_scenarios=[
+                FinanceScenario(**item)
+                for item in finance_payload.get("scenarios", [])
+            ],
+            error_message="",
+        )
+        self.session_store.save_run(run)
+        return run
+
+    def load_run(self, run_id: str) -> dict[str, Any]:
+        return self.session_store.load_run(run_id)
+
+
+def _record_tool_call(
+    tool_calls: list[ToolCallRecord],
+    tool_name: str,
+    response: ToolResponse,
+    latency_ms: int = 0,
+) -> None:
+    output_count = 0
+    if isinstance(response.data.get("evidence"), list):
+        output_count = len(response.data["evidence"])
+    elif isinstance(response.data.get("assumptions"), list):
+        output_count = len(response.data["assumptions"])
+    elif isinstance(response.data.get("results"), list):
+        output_count = len(response.data["results"])
+    tool_calls.append(
+        ToolCallRecord(
+            tool_name=tool_name,
+            input_summary=tool_name,
+            output_summary=f"{output_count} structured items",
+            status="success" if response.success else "failed",
+            latency_ms=max(latency_ms, 1),
+        )
+    )
+
+
+def _complete_todo(
+    todo: TodoBoard, title_prefix: str, result_summary: str, source_urls: list[str]
+) -> None:
+    """Mark the first todo whose title starts with title_prefix as completed.
+    No-op when no matching todo exists (e.g. Planner didn't run)."""
+    for item in todo.items():
+        if item.title.startswith(title_prefix) and item.status != "completed":
+            todo.complete(item.todo_id, result_summary, source_urls=source_urls)
+            return
+
+
+def _extract_urls(items: list[dict[str, Any]]) -> list[str]:
+    urls: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("source_url", item.get("url", ""))).strip()
+        if url and url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def _infer_brand_id(query: str) -> str:
+    brand_map = {
+        "luckin": "luckin",
+        "\u745e\u5e78": "luckin",
+        "\u5e93\u8fea": "cotti",
+        "\u661f\u5df4\u514b": "starbucks",
+        "\u871c\u96ea": "mixue",
+        "\u9738\u738b": "chagee",
+        "chagee": "chagee",
+        "\u53e4\u8317": "guming",
+        "\u8336\u767e\u9053": "chapanda",
+    }
+    folded = query.casefold()
+    for needle, brand_id in brand_map.items():
+        if needle.casefold() in folded:
+            return brand_id
+    return "luckin"
+
+
+def _infer_lens(query: str, intent: str) -> str:
+    if intent == "finance_analysis_needed":
+        return ""
+    if "\u52a0\u76df" in query:
+        return "franchise"
+    if "\u6269\u5f20" in query or "\u95e8\u5e97" in query:
+        return "expansion"
+    if "\u4ef7\u683c" in query:
+        return "pricing"
+    if "\u98ce\u9669" in query or "\u5229\u6da6\u7387" in query:
+        return "risk"
+    return ""
+
+
+def _infer_evidence_query(query: str, intent: str) -> str:
+    if "\u5229\u6da6\u7387" in query:
+        return "\u5229\u6da6\u7387"
+    if "\u4f30\u503c" in query:
+        return "\u5229\u6da6\u7387"
+    if "\u4ef7\u683c" in query:
+        return "\u4ef7\u683c"
+    if "\u6269\u5f20" in query:
+        return "\u6269\u5f20"
+    if intent == "finance_analysis_needed":
+        return "\u5229\u6da6\u7387"
+    return query
+
+
+def _preview(value: Any) -> str:
+    return str(value)[:240]

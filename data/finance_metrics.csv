@@ -1,0 +1,11 @@
+metric_id,brand_id,metric_name,metric_value,unit,period,formula,source_evidence_ids,confidence,notes
+FM-001,luckin,total_stores,33596,stores,2026Q1,reported_store_count,EV-001,0.92,瑞幸一季度门店总数
+FM-002,luckin,partnership_stores,11789,stores,2026Q1,reported_partnership_store_count,EV-002,0.91,联营门店网络
+FM-003,luckin,same_store_sales_growth,-0.001,ratio,2026Q1,self_operated_same_store_sales_growth,EV-003,0.82,同店销售增长放缓
+FM-004,luckin,gaap_operating_margin,0.06,ratio,2026Q1,gaap_operating_profit/revenue,EV-004,0.82,GAAP 营业利润率
+FM-005,mixue,store_count_proxy,53000,stores,2025H1,reported_global_store_network,EV-014,0.84,蜜雪门店网络规模
+FM-006,mixue,franchise_network_signal,1,flag,2025H1,franchise_model_signal,EV-015,0.8,加盟模型信号
+FM-007,chagee,revenue_growth_signal,0.354,ratio,2025FY,reported_revenue_growth_signal,EV-018,0.78,霸王茶姬增长信号
+FM-008,chagee,valuation_risk_signal,1,flag,2025FY,valuation_risk_signal,EV-020,0.76,加盟扩张与经营风险信号
+FM-009,guming,annual_report_available,1,flag,2025FY,annual_report_signal,EV-021,0.79,古茗年报可用
+FM-010,guming,franchise_model_signal,1,flag,2025FY,franchise_model_signal,EV-023,0.78,加盟模型信号

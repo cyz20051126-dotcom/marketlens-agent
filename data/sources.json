@@ -1,0 +1,63 @@
+{
+  "dataset_version": "2026-06-19-v1",
+  "industry": "fresh_beverage_chains_china",
+  "brands": [
+    {
+      "brand_id": "luckin",
+      "name": "瑞幸咖啡",
+      "category": "coffee"
+    },
+    {
+      "brand_id": "cotti",
+      "name": "库迪咖啡",
+      "category": "coffee"
+    },
+    {
+      "brand_id": "starbucks",
+      "name": "星巴克中国",
+      "category": "coffee"
+    },
+    {
+      "brand_id": "mixue",
+      "name": "蜜雪冰城",
+      "category": "tea"
+    },
+    {
+      "brand_id": "chagee",
+      "name": "霸王茶姬",
+      "category": "tea"
+    },
+    {
+      "brand_id": "guming",
+      "name": "古茗",
+      "category": "tea"
+    },
+    {
+      "brand_id": "chapanda",
+      "name": "茶百道",
+      "category": "tea"
+    }
+  ],
+  "collection_queries": [
+    "瑞幸咖啡 Luckin Coffee 价格促销 门店密度 2025 2026",
+    "库迪咖啡 Cotti Coffee 价格战 扩张 中国 2025 2026",
+    "星巴克中国 Starbucks China 战略 门店扩张 2025 2026",
+    "蜜雪冰城 Mixue 招股书 加盟 门店扩张",
+    "霸王茶姬 CHAGEE 招股书 高端茶饮 扩张 2025 2026",
+    "古茗 Guming 招股书 茶饮 加盟 扩张",
+    "茶百道 ChaPanda 招股书 茶饮 加盟 扩张",
+    "China fresh beverage tea coffee market price war 2025 2026"
+  ],
+  "source_policy": {
+    "allowed_source_types": [
+      "annual_report",
+      "prospectus",
+      "company_site",
+      "news",
+      "industry_report",
+      "job_posting"
+    ],
+    "claim_rule": "每个简报结论都必须至少引用一条带 source_url 和 source_type 的证据行。",
+    "review_rule": "置信度低于 0.70 的证据行保持可见，但标记为 needs_review。"
+  }
+}

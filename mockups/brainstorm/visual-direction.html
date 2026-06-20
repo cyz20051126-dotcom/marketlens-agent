@@ -1,0 +1,171 @@
+<style>
+  .vd-wrap { display: grid; gap: 18px; }
+  .vd-title h2 { margin-bottom: 6px; }
+  .vd-title p { color: #5f6b7a; line-height: 1.6; margin: 0; }
+  .vd-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .vd-card {
+    border: 1px solid #d8dee8;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    cursor: pointer;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .vd-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20, 31, 50, .10); }
+  .vd-preview { height: 330px; padding: 14px; border-bottom: 1px solid #e1e7ef; }
+  .vd-body { padding: 14px; }
+  .vd-body h3 { margin: 0 0 7px; font-size: 17px; }
+  .vd-body p { margin: 0; color: #5f6b7a; line-height: 1.5; font-size: 13px; }
+  .vd-badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 999px; font-size: 11px; margin-bottom: 10px; }
+  .vd-toolbar { height: 32px; border-radius: 7px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; font-size: 11px; }
+  .vd-grid { display: grid; gap: 8px; }
+  .vd-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vd-kpi { height: 48px; border-radius: 7px; padding: 8px; box-sizing: border-box; }
+  .vd-kpi b { display: block; font-size: 11px; margin-bottom: 3px; }
+  .vd-kpi span { font-size: 10px; opacity: .75; }
+  .vd-wide { height: 88px; border-radius: 7px; padding: 10px; box-sizing: border-box; }
+  .vd-bars { display: grid; gap: 7px; margin-top: 9px; }
+  .vd-bar { height: 9px; border-radius: 999px; overflow: hidden; }
+  .vd-bar i { display: block; height: 100%; }
+  .vd-table { display: grid; gap: 7px; margin-top: 9px; }
+  .vd-row { display: grid; grid-template-columns: 46px 1fr 28px; gap: 6px; align-items: center; font-size: 10px; }
+  .vd-line { height: 7px; border-radius: 999px; }
+  .style-a { background: #f7f9fb; }
+  .style-a .vd-toolbar { background: #ffffff; border: 1px solid #d9e1eb; color: #1f2937; }
+  .style-a .vd-kpi, .style-a .vd-wide { background: #ffffff; border: 1px solid #d9e1eb; color: #1f2937; }
+  .style-a .vd-bar { background: #e6edf4; }
+  .style-a .vd-bar i { background: #2f6f73; }
+  .style-a .vd-line { background: #d6dee9; }
+  .style-a .vd-badge { background: #e8f2f1; color: #245f63; }
+  .style-b { background: #f7f4ed; }
+  .style-b .vd-toolbar { background: #201d18; color: #f8f4ec; }
+  .style-b .vd-kpi, .style-b .vd-wide { background: #fffaf2; border: 1px solid #e0d5c2; color: #2a241c; }
+  .style-b .vd-bar { background: #e6d9c3; }
+  .style-b .vd-bar i { background: #8d4f2e; }
+  .style-b .vd-line { background: #dfd2bd; }
+  .style-b .vd-badge { background: #f0dfc5; color: #754321; }
+  .style-c { background: #0f1724; }
+  .style-c .vd-toolbar { background: #152235; border: 1px solid #253752; color: #d8e7ff; }
+  .style-c .vd-kpi, .style-c .vd-wide { background: #162237; border: 1px solid #2a3d5c; color: #e5efff; }
+  .style-c .vd-bar { background: #273a57; }
+  .style-c .vd-bar i { background: #57c6ff; }
+  .style-c .vd-line { background: #2b405f; }
+  .style-c .vd-badge { background: #183c5f; color: #8fd7ff; }
+  .vd-note {
+    border: 1px solid #d8dee8;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #fbfcfe;
+    color: #4b5563;
+    line-height: 1.65;
+  }
+</style>
+
+<div class="vd-wrap">
+  <div class="vd-title">
+    <h2>MarketLens AI 的视觉气质选哪种？</h2>
+    <p>这一步只定“看起来像什么产品”。我推荐 A：专业分析工作台。它适合实习作品，因为既有产品感，又不会显得过度包装。</p>
+  </div>
+
+  <div class="vd-cards">
+    <div class="vd-card" data-choice="analyst-workbench" onclick="toggleSelect(this)">
+      <div class="vd-preview style-a">
+        <div class="vd-toolbar"><b>MarketLens AI</b><span>Evidence-first dashboard</span></div>
+        <div class="vd-grid">
+          <div class="vd-kpis">
+            <div class="vd-kpi"><b>Brand coverage</b><span>7 brands reviewed</span></div>
+            <div class="vd-kpi"><b>Source confidence</b><span>82% verified</span></div>
+          </div>
+          <div class="vd-wide">
+            <b>Positioning and Expansion Matrix</b>
+            <div class="vd-bars">
+              <div class="vd-bar"><i style="width:88%"></i></div>
+              <div class="vd-bar"><i style="width:71%"></i></div>
+              <div class="vd-bar"><i style="width:54%"></i></div>
+            </div>
+          </div>
+          <div class="vd-wide">
+            <b>Evidence Queue</b>
+            <div class="vd-table">
+              <div class="vd-row"><span>Luckin</span><div class="vd-line"></div><span>High</span></div>
+              <div class="vd-row"><span>CHAGEE</span><div class="vd-line"></div><span>Med</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="vd-body">
+        <span class="vd-badge">Recommended</span>
+        <h3>A. 专业分析工作台</h3>
+        <p>克制、清爽、信息密度高。适合反复截图、放 README，也最像真实商业分析工具。</p>
+      </div>
+    </div>
+
+    <div class="vd-card" data-choice="consulting-brief" onclick="toggleSelect(this)">
+      <div class="vd-preview style-b">
+        <div class="vd-toolbar"><b>MarketLens Brief</b><span>Fresh beverage sector</span></div>
+        <div class="vd-grid">
+          <div class="vd-wide">
+            <b>Executive Takeaways</b>
+            <div class="vd-bars">
+              <div class="vd-bar"><i style="width:78%"></i></div>
+              <div class="vd-bar"><i style="width:62%"></i></div>
+              <div class="vd-bar"><i style="width:45%"></i></div>
+            </div>
+          </div>
+          <div class="vd-kpis">
+            <div class="vd-kpi"><b>Price war</b><span>coffee pressure</span></div>
+            <div class="vd-kpi"><b>Franchise</b><span>tea expansion</span></div>
+          </div>
+          <div class="vd-wide">
+            <b>Recommendation Memo</b>
+            <div class="vd-table">
+              <div class="vd-row"><span>Risk</span><div class="vd-line"></div><span>3</span></div>
+              <div class="vd-row"><span>Signal</span><div class="vd-line"></div><span>8</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="vd-body">
+        <span class="vd-badge">Polished</span>
+        <h3>B. 咨询报告风</h3>
+        <p>更像研究成果展示，视觉更高级；但产品感弱一些，容易变成报告页面。</p>
+      </div>
+    </div>
+
+    <div class="vd-card" data-choice="ai-command-center" onclick="toggleSelect(this)">
+      <div class="vd-preview style-c">
+        <div class="vd-toolbar"><b>MarketLens Agent</b><span>Live pipeline</span></div>
+        <div class="vd-grid">
+          <div class="vd-kpis">
+            <div class="vd-kpi"><b>Crawl</b><span>24 sources</span></div>
+            <div class="vd-kpi"><b>Extract</b><span>137 facts</span></div>
+          </div>
+          <div class="vd-wide">
+            <b>Agent Trace</b>
+            <div class="vd-bars">
+              <div class="vd-bar"><i style="width:94%"></i></div>
+              <div class="vd-bar"><i style="width:76%"></i></div>
+              <div class="vd-bar"><i style="width:59%"></i></div>
+            </div>
+          </div>
+          <div class="vd-wide">
+            <b>Live Decisions</b>
+            <div class="vd-table">
+              <div class="vd-row"><span>Fetch</span><div class="vd-line"></div><span>OK</span></div>
+              <div class="vd-row"><span>Score</span><div class="vd-line"></div><span>OK</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="vd-body">
+        <span class="vd-badge">Flashy</span>
+        <h3>C. AI 控制台风</h3>
+        <p>Agent 感很强，但如果做不好会显得炫技，和商业分析作品的可信度有冲突。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="vd-note">
+    我的建议：选 A 作为主视觉，吸收 B 的 executive brief 版块，少量吸收 C 的 workflow 状态。也就是“专业分析工作台 + 报告输出 + 可见 AI 流程”，不要做赛博感大屏。
+  </div>
+</div>

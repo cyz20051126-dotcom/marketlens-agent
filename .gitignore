@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Agent runtime artifacts
+work/
+.firecrawl/
+websearch/
+
+# Node
+web/node_modules/
+web/dist/
+web/.vite/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Personal / job-application materials (excluded from public portfolio)
+# Resumes contain phone/email — never push to public repo
+deliverables/
+docs/application_materials/
+docs/interview_talking_points.md
+scripts/build_agent_resume_docx.py
+scripts/build_resume_docx.py

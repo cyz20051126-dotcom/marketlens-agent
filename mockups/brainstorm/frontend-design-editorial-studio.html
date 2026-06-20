@@ -1,0 +1,617 @@
+<style>
+  .ed-wrap {
+    display: grid;
+    gap: 18px;
+    color: #182027;
+  }
+  .ed-note {
+    border: 1px solid #cfd8d6;
+    border-radius: 12px;
+    padding: 16px 18px;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(130, 54, 76, .10), transparent 32%),
+      radial-gradient(circle at 94% 20%, rgba(48, 120, 108, .12), transparent 28%),
+      #f3f5f1;
+  }
+  .ed-note h2 {
+    margin: 0 0 6px;
+    font-size: 27px;
+    letter-spacing: -0.035em;
+  }
+  .ed-note p {
+    margin: 0;
+    color: #4f5b60;
+    line-height: 1.65;
+  }
+  .ed-app {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #becbc8;
+    border-radius: 18px;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,.50), rgba(255,255,255,.10)),
+      radial-gradient(circle at 18% 10%, rgba(126, 51, 73, .12), transparent 30%),
+      radial-gradient(circle at 88% 76%, rgba(49, 121, 109, .16), transparent 28%),
+      #e8eeeb;
+    box-shadow: 0 26px 70px rgba(30, 43, 48, .18);
+  }
+  .ed-app:before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .42;
+    background-image:
+      linear-gradient(rgba(31, 42, 48, .055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31, 42, 48, .045) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .ed-app > * { position: relative; z-index: 1; }
+  .ed-nav {
+    height: 58px;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(108, 123, 128, .25);
+    background: rgba(247, 249, 246, .74);
+    backdrop-filter: blur(12px);
+  }
+  .ed-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+  }
+  .ed-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: #fffaf7;
+    background: #22313a;
+    box-shadow: inset 0 -8px 18px rgba(255,255,255,.08);
+  }
+  .ed-brand small {
+    color: #657274;
+    font-weight: 550;
+    letter-spacing: 0;
+  }
+  .ed-nav-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ed-tab {
+    border: 1px solid rgba(79, 91, 96, .18);
+    border-radius: 999px;
+    padding: 7px 11px;
+    background: rgba(255,255,255,.58);
+    color: #46545a;
+    font-size: 12px;
+  }
+  .ed-tab.active {
+    border-color: rgba(130, 54, 76, .32);
+    background: rgba(130, 54, 76, .10);
+    color: #7a3149;
+  }
+  .ed-hero {
+    display: grid;
+    grid-template-columns: 1.08fr .92fr;
+    gap: 18px;
+    padding: 22px;
+  }
+  .ed-cover {
+    min-height: 260px;
+    border: 1px solid rgba(96, 113, 116, .25);
+    border-radius: 16px;
+    padding: 24px;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.94), rgba(246, 243, 235, .82)),
+      #f7f3ea;
+    box-shadow: 0 18px 38px rgba(45, 60, 62, .10);
+  }
+  .ed-eyebrow {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    margin-bottom: 22px;
+    color: #7a3149;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-weight: 750;
+  }
+  .ed-rule {
+    width: 54px;
+    height: 1px;
+    background: #7a3149;
+  }
+  .ed-cover h1 {
+    margin: 0;
+    max-width: 760px;
+    color: #151c20;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 41px;
+    line-height: 1.03;
+    letter-spacing: -0.045em;
+    font-weight: 600;
+  }
+  .ed-cover p {
+    margin: 17px 0 0;
+    max-width: 680px;
+    color: #4e5a5e;
+    line-height: 1.68;
+    font-size: 14px;
+  }
+  .ed-thesis-row {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .ed-thesis {
+    border: 1px solid rgba(84, 101, 105, .20);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(255,255,255,.72);
+  }
+  .ed-thesis b {
+    display: block;
+    margin-bottom: 5px;
+    color: #202930;
+    font-size: 12.5px;
+  }
+  .ed-thesis span {
+    color: #59666a;
+    font-size: 11.7px;
+    line-height: 1.45;
+  }
+  .ed-process {
+    display: grid;
+    gap: 12px;
+  }
+  .ed-card {
+    border: 1px solid rgba(85, 102, 106, .24);
+    border-radius: 16px;
+    background: rgba(250, 251, 248, .78);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 38px rgba(45, 60, 62, .09);
+  }
+  .ed-card-head {
+    padding: 14px 15px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ed-card h3 {
+    margin: 0;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+  .ed-badge {
+    border-radius: 999px;
+    padding: 4px 8px;
+    background: rgba(48, 120, 108, .12);
+    color: #2d7166;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .ed-flow {
+    padding: 14px 15px 15px;
+    display: grid;
+    gap: 9px;
+  }
+  .ed-step {
+    display: grid;
+    grid-template-columns: 30px 1fr 58px;
+    gap: 10px;
+    align-items: center;
+    padding: 9px;
+    border: 1px solid rgba(91, 108, 112, .18);
+    border-radius: 12px;
+    background: rgba(255,255,255,.70);
+  }
+  .ed-step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: #f9fbf7;
+    background: #2d7166;
+    font-size: 11px;
+    font-weight: 750;
+  }
+  .ed-step b {
+    display: block;
+    font-size: 12.5px;
+  }
+  .ed-step span {
+    display: block;
+    margin-top: 2px;
+    color: #6b777a;
+    font-size: 11px;
+  }
+  .ed-status {
+    justify-self: end;
+    border-radius: 999px;
+    padding: 4px 7px;
+    background: #eef2ee;
+    color: #657274;
+    font-size: 10.5px;
+  }
+  .ed-signal-card {
+    padding: 15px;
+  }
+  .ed-signal-card h3 {
+    margin-bottom: 10px;
+  }
+  .ed-signal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .ed-signal {
+    min-height: 58px;
+    border-radius: 12px;
+    padding: 10px;
+    background: rgba(255,255,255,.68);
+    border: 1px solid rgba(91,108,112,.18);
+  }
+  .ed-signal b {
+    display: block;
+    color: #182027;
+    font-size: 18px;
+    letter-spacing: -0.03em;
+  }
+  .ed-signal span {
+    display: block;
+    margin-top: 4px;
+    color: #657274;
+    font-size: 10.8px;
+  }
+  .ed-workbench {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 18px;
+    padding: 0 22px 22px;
+  }
+  .ed-sidebar {
+    border: 1px solid rgba(85, 102, 106, .24);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.75), rgba(239,244,241,.80)),
+      #f0f4f1;
+    padding: 15px;
+    align-self: start;
+  }
+  .ed-side-title {
+    margin-bottom: 10px;
+    color: #7a3149;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    font-weight: 750;
+  }
+  .ed-filter {
+    border: 1px solid rgba(91,108,112,.18);
+    border-radius: 12px;
+    padding: 11px;
+    background: rgba(255,255,255,.64);
+    margin-bottom: 10px;
+  }
+  .ed-filter b {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 7px;
+  }
+  .ed-chiprow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ed-chip {
+    border: 1px solid rgba(91,108,112,.20);
+    border-radius: 999px;
+    padding: 4px 7px;
+    background: rgba(255,255,255,.62);
+    color: #59666a;
+    font-size: 10.5px;
+  }
+  .ed-chip.hot {
+    border-color: rgba(122,49,73,.28);
+    background: rgba(122,49,73,.09);
+    color: #7a3149;
+  }
+  .ed-main {
+    display: grid;
+    gap: 14px;
+  }
+  .ed-grid {
+    display: grid;
+    grid-template-columns: 1.08fr .92fr;
+    gap: 14px;
+  }
+  .ed-panel {
+    border: 1px solid rgba(85, 102, 106, .24);
+    border-radius: 16px;
+    background: rgba(250,251,248,.82);
+    padding: 15px;
+    box-shadow: 0 16px 34px rgba(45,60,62,.08);
+  }
+  .ed-panel h3 {
+    margin: 0 0 11px;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .ed-panel small { color: #748084; }
+  .ed-matrix {
+    position: relative;
+    height: 275px;
+    border: 1px solid rgba(91,108,112,.20);
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+      linear-gradient(90deg, transparent 49.5%, rgba(79,91,96,.22) 50%, transparent 50.5%),
+      linear-gradient(180deg, transparent 49.5%, rgba(79,91,96,.20) 50%, transparent 50.5%),
+      radial-gradient(circle at 72% 29%, rgba(122,49,73,.12), transparent 30%),
+      radial-gradient(circle at 26% 70%, rgba(45,113,102,.13), transparent 32%),
+      rgba(255,255,255,.78);
+  }
+  .ed-axis {
+    position: absolute;
+    color: #718083;
+    font-size: 10px;
+  }
+  .ed-axis.top { left: 14px; right: 14px; top: 10px; display: flex; justify-content: space-between; }
+  .ed-axis.bottom { left: 14px; right: 14px; bottom: 10px; display: flex; justify-content: space-between; }
+  .ed-point {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fffdf8;
+    box-shadow: 0 2px 10px rgba(30, 41, 46, .24);
+  }
+  .ed-point.coffee { background: #596f8a; }
+  .ed-point.tea { background: #2d7166; }
+  .ed-point.premium { background: #9b4c62; }
+  .ed-legend {
+    display: flex;
+    gap: 12px;
+    margin-top: 11px;
+    color: #657274;
+    font-size: 11px;
+  }
+  .ed-legend i {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 5px;
+  }
+  .ed-takeaways {
+    display: grid;
+    gap: 10px;
+  }
+  .ed-takeaway {
+    border: 1px solid rgba(91,108,112,.18);
+    border-radius: 12px;
+    padding: 11px;
+    background: rgba(255,255,255,.66);
+  }
+  .ed-takeaway b {
+    display: block;
+    margin-bottom: 5px;
+    color: #1e272d;
+    font-size: 13px;
+  }
+  .ed-takeaway span {
+    color: #5d686c;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .ed-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .ed-table th {
+    text-align: left;
+    color: #6c787b;
+    font-weight: 750;
+    border-bottom: 1px solid rgba(91,108,112,.20);
+    padding: 8px 6px;
+  }
+  .ed-table td {
+    border-bottom: 1px solid rgba(91,108,112,.12);
+    padding: 8px 6px;
+    color: #273139;
+  }
+  .ed-pill {
+    border-radius: 999px;
+    padding: 3px 8px;
+    background: rgba(45,113,102,.12);
+    color: #2d7166;
+    font-size: 11px;
+    font-weight: 650;
+  }
+  .ed-export {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 11px;
+    border-top: 1px solid rgba(91,108,112,.16);
+    padding-top: 11px;
+  }
+  .ed-export span { color: #657274; font-size: 12px; }
+  .ed-btn {
+    border: 1px solid rgba(122,49,73,.24);
+    border-radius: 10px;
+    padding: 8px 11px;
+    background: rgba(122,49,73,.09);
+    color: #7a3149;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .ed-decision {
+    border: 1px solid #d0dad7;
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #f8faf7;
+    color: #536065;
+    line-height: 1.6;
+  }
+</style>
+
+<div class="ed-wrap">
+  <div class="ed-note">
+    <h2>Frontend-design 版本：Editorial Intelligence Studio</h2>
+    <p>这版不再是“白色后台”。它保留 A 的工作台结构，吸收 B 的报告标题和 thesis，加入 C 的 workflow trace，但整体更有品牌感和材质感。</p>
+  </div>
+
+  <div class="ed-app">
+    <div class="ed-nav">
+      <div class="ed-brand"><span class="ed-logo">ML</span><span>MarketLens AI</span><small>Fresh Beverage Intelligence Studio</small></div>
+      <div class="ed-nav-actions">
+        <span class="ed-tab active">Brief</span>
+        <span class="ed-tab">Matrix</span>
+        <span class="ed-tab">Evidence</span>
+        <span class="ed-tab">Export</span>
+      </div>
+    </div>
+
+    <div class="ed-hero">
+      <section class="ed-cover">
+        <div class="ed-eyebrow"><span>Competitive Brief</span><span class="ed-rule"></span><span>Tea + Coffee Chains</span></div>
+        <h1>Two Growth Playbooks Are Emerging in Fresh Beverage Chains</h1>
+        <p>MarketLens AI turns public sources into an analyst-ready brief: category thesis, competitor matrix, source-backed evidence, and exportable research notes.</p>
+        <div class="ed-thesis-row">
+          <div class="ed-thesis"><b>Coffee logic</b><span>Frequency, store density, convenience, and price pressure.</span></div>
+          <div class="ed-thesis"><b>Tea logic</b><span>Brand narrative, franchise scale, and product differentiation.</span></div>
+        </div>
+      </section>
+
+      <section class="ed-process">
+        <div class="ed-card">
+          <div class="ed-card-head"><h3>Visible AI Workflow</h3><span class="ed-badge">Traceable</span></div>
+          <div class="ed-flow">
+            <div class="ed-step"><span class="ed-step-num">1</span><div><b>Search</b><span>Public pages, reports, news</span></div><span class="ed-status">done</span></div>
+            <div class="ed-step"><span class="ed-step-num">2</span><div><b>Extract</b><span>Brand facts and claims</span></div><span class="ed-status">done</span></div>
+            <div class="ed-step"><span class="ed-step-num">3</span><div><b>Score</b><span>Source confidence</span></div><span class="ed-status">review</span></div>
+            <div class="ed-step"><span class="ed-step-num">4</span><div><b>Synthesize</b><span>Matrix and brief</span></div><span class="ed-status">ready</span></div>
+          </div>
+        </div>
+
+        <div class="ed-card ed-signal-card">
+          <h3>Research Signals</h3>
+          <div class="ed-signal-grid">
+            <div class="ed-signal"><b>7</b><span>brands</span></div>
+            <div class="ed-signal"><b>5</b><span>lenses</span></div>
+            <div class="ed-signal"><b>24+</b><span>sources</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="ed-workbench">
+      <aside class="ed-sidebar">
+        <div class="ed-side-title">Scope Control</div>
+        <div class="ed-filter">
+          <b>Brands</b>
+          <div class="ed-chiprow">
+            <span class="ed-chip hot">Luckin</span><span class="ed-chip">Cotti</span><span class="ed-chip">Starbucks</span>
+            <span class="ed-chip hot">MXBC</span><span class="ed-chip">CHAGEE</span><span class="ed-chip">Guming</span><span class="ed-chip">ChaPanda</span>
+          </div>
+        </div>
+        <div class="ed-filter">
+          <b>Analysis lenses</b>
+          <div class="ed-chiprow">
+            <span class="ed-chip">Price band</span><span class="ed-chip">Expansion</span><span class="ed-chip">Franchise</span>
+            <span class="ed-chip">Positioning</span><span class="ed-chip">Risk</span>
+          </div>
+        </div>
+        <div class="ed-filter">
+          <b>Outputs</b>
+          <div class="ed-chiprow">
+            <span class="ed-chip hot">Brief</span><span class="ed-chip">Evidence CSV</span><span class="ed-chip">Brand cards</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="ed-main">
+        <div class="ed-grid">
+          <section class="ed-panel">
+            <h3>Positioning Matrix <small>price pressure vs. premium narrative</small></h3>
+            <div class="ed-matrix">
+              <div class="ed-axis top"><span>Lower ticket / high frequency</span><span>Premium narrative</span></div>
+              <div class="ed-axis bottom"><span>Coffee density logic</span><span>Tea franchise logic</span></div>
+              <span class="ed-point coffee" style="left:26%;top:64%"></span>
+              <span class="ed-point coffee" style="left:18%;top:72%"></span>
+              <span class="ed-point coffee" style="left:37%;top:39%"></span>
+              <span class="ed-point tea" style="left:73%;top:71%"></span>
+              <span class="ed-point premium" style="left:67%;top:26%"></span>
+              <span class="ed-point tea" style="left:80%;top:52%"></span>
+              <span class="ed-point tea" style="left:70%;top:45%"></span>
+            </div>
+            <div class="ed-legend"><span><i style="background:#596f8a"></i>Coffee</span><span><i style="background:#2d7166"></i>Tea</span><span><i style="background:#9b4c62"></i>Premium signal</span></div>
+          </section>
+
+          <section class="ed-panel">
+            <h3>Executive Takeaways <small>report layer</small></h3>
+            <div class="ed-takeaways">
+              <div class="ed-takeaway"><b>1. Coffee competition is efficiency-led.</b><span>High-frequency consumption makes convenience, density, and price central.</span></div>
+              <div class="ed-takeaway"><b>2. Tea brands differentiate through format.</b><span>Product storytelling and franchise economics create different expansion lanes.</span></div>
+              <div class="ed-takeaway"><b>3. Evidence tracking is the credibility anchor.</b><span>Each conclusion connects to source, extracted field, confidence, and review status.</span></div>
+            </div>
+          </section>
+        </div>
+
+        <div class="ed-grid">
+          <section class="ed-panel">
+            <h3>Evidence Review <small>trust layer</small></h3>
+            <table class="ed-table">
+              <thead><tr><th>Brand</th><th>Signal</th><th>Source</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Luckin</td><td>Price and store density</td><td>News / filing</td><td><span class="ed-pill">reviewed</span></td></tr>
+                <tr><td>CHAGEE</td><td>Premium tea narrative</td><td>News / prospectus</td><td><span class="ed-pill">reviewed</span></td></tr>
+                <tr><td>MXBC</td><td>Franchise scale</td><td>Prospectus</td><td><span class="ed-pill">reviewed</span></td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="ed-panel">
+            <h3>Portfolio Exports</h3>
+            <div class="ed-takeaways">
+              <div class="ed-takeaway"><b>Markdown brief</b><span>Used in GitHub README and interview storytelling.</span></div>
+              <div class="ed-takeaway"><b>Evidence CSV</b><span>Shows that the product is source-backed rather than a generic summary tool.</span></div>
+            </div>
+            <div class="ed-export"><span>Ready for portfolio screenshot</span><button class="ed-btn">Export brief</button></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="ed-decision">这版如果方向对，最终设计约束就是：不纯白、不大面积深色；采用雾绿灰背景、纸质报告卡片、编辑部式标题、酒红/蓝绿业务强调，同时保留清楚的信息层级。</div>
+
+  <div class="options">
+    <div class="option" data-choice="editorial-studio-ok" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>这版更对</h3>
+        <p>继续定最终页面结构和功能边界。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="editorial-studio-revise" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>还要再调</h3>
+        <p>可以继续往更高级、更产品、更报告或更克制的方向调。</p>
+      </div>
+    </div>
+  </div>
+</div>
