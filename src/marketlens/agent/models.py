@@ -45,6 +45,7 @@ class TodoItem(SerializableRecord):
     assigned_agent: str
     supporting_source_urls: list[str] = field(default_factory=list)
     result_summary: str = ""
+    task_type: str = ""
 
 
 @dataclass(frozen=True)

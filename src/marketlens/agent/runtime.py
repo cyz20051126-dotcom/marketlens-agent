@@ -62,6 +62,7 @@ class TodoBoard:
         assigned_agent: str,
         supporting_source_urls: list[str] | None = None,
         result_summary: str = "",
+        task_type: str = "",
     ) -> TodoItem:
         todo = TodoItem(
             todo_id=f"todo_{len(self._items) + 1:03d}",
@@ -73,6 +74,7 @@ class TodoBoard:
             assigned_agent=assigned_agent,
             supporting_source_urls=list(supporting_source_urls or []),
             result_summary=result_summary,
+            task_type=task_type,
         )
         self._items.append(todo)
         return todo

@@ -248,15 +248,43 @@ class EvidenceExtractorAgent(BaseAgent):
 
 
 class VerifierAgent(BaseAgent):
+    """Rule-based evidence verifier (no LLM). Approves a candidate only
+    when ALL of the following hold:
+      1. claim is non-empty
+      2. source_url is a valid http(s) URL
+      3. source_type is in ALLOWED_SOURCE_TYPES (news, annual_report, ...)
+      4. confidence >= VERIFIER_MIN_CONFIDENCE (0.5)
+    Duplicate URL/claim detection is handled by the orchestrator, which
+    tracks seen URLs across a verification batch and skips duplicates
+    before calling the verifier."""
+
     name = "VerifierAgent"
+    min_confidence = 0.5
 
     def run(self, payload: dict[str, Any]) -> dict[str, Any]:
         evidence = dict(payload.get("evidence", {}))
         source_url = _text(evidence.get("source_url"))
         claim = _text(evidence.get("claim"))
-        approved = bool(claim) and _is_http_url(source_url)
+        source_type = _text(evidence.get("source_type"))
+        confidence = _to_float(evidence.get("confidence"))
+
+        reasons: list[str] = []
+        if not claim:
+            reasons.append("empty claim")
+        if not _is_http_url(source_url):
+            reasons.append("invalid source_url")
+        if source_type not in ALLOWED_SOURCE_TYPES:
+            reasons.append(f"source_type '{source_type}' not in allowed set")
+        if confidence < self.min_confidence:
+            reasons.append(f"confidence {confidence} < {self.min_confidence}")
+
+        approved = not reasons
         evidence["review_status"] = "reviewed" if approved else "rejected"
         evidence["verification_status"] = "approved" if approved else "rejected"
+        if reasons:
+            evidence["verification_reason"] = "; ".join(reasons)
+        else:
+            evidence["verification_reason"] = ""
         return evidence
 
 
@@ -367,8 +395,8 @@ class WriterAgent(BaseAgent):
         return {"answer": answer, "supporting_evidence_ids": evidence_ids}
 
 
-def _task(title: str, intent: str, query: str) -> dict[str, str]:
-    return {"title": title, "intent": intent, "query": query}
+def _task(title: str, intent: str, query: str, task_type: str = "") -> dict[str, str]:
+    return {"title": title, "intent": intent, "query": query, "task_type": task_type}
 
 
 def _parse_triage_response(content: str, query: str) -> tuple[str, str]:
@@ -402,7 +430,9 @@ def _parse_planner_response(
     content: str, query: str, intent: str
 ) -> list[dict[str, str]]:
     """Parse LLM JSON response for PlannerAgent. Falls back to rule-based
-    task generation on parse failure."""
+    task generation on parse failure. Infers a stable task_type for each
+    task so the orchestrator can match todos without relying on the
+    human-readable title (which may be Chinese when the LLM runs)."""
     try:
         data = json.loads(content)
         raw_tasks = data.get("tasks", [])
@@ -415,8 +445,14 @@ def _parse_planner_response(
                 task_intent = _text(raw.get("intent")) or intent
                 task_query = _text(raw.get("query")) or query
                 if title:
+                    task_type = _infer_task_type(title, task_intent)
                     tasks.append(
-                        {"title": title, "intent": task_intent, "query": task_query}
+                        {
+                            "title": title,
+                            "intent": task_intent,
+                            "query": task_query,
+                            "task_type": task_type,
+                        }
                     )
             if tasks:
                 return tasks
@@ -437,22 +473,59 @@ def _rule_based_plan(query: str, intent: str) -> list[dict[str, str]]:
     needs_report = intent == "report_generation_needed"
 
     if needs_search:
-        tasks.append(_task("Search new sources", "new_research_needed", query))
+        tasks.append(_task("Search new sources", "new_research_needed", query, "search_sources"))
 
-    tasks.append(_task("Review local evidence", "local_evidence_qa", query))
+    tasks.append(_task("Review local evidence", "local_evidence_qa", query, "review_evidence"))
 
     if needs_finance:
-        tasks.append(_task("Finance assumptions", "finance_analysis_needed", query))
+        tasks.append(_task("Finance assumptions", "finance_analysis_needed", query, "finance_assumptions"))
 
     if needs_report:
-        tasks.append(_task("Structure report", "report_generation_needed", query))
+        tasks.append(_task("Structure report", "report_generation_needed", query, "structure_report"))
 
     if len(tasks) < 4:
-        tasks.append(_task("Verify evidence", "local_evidence_qa", query))
+        tasks.append(_task("Verify evidence", "local_evidence_qa", query, "verify_evidence"))
 
     tasks = tasks[:4]
-    tasks.append(_task("Draft final answer", intent, query))
+    tasks.append(_task("Draft final answer", intent, query, "draft_answer"))
     return tasks
+
+
+# Keyword groups used to infer a stable task_type from an LLM-generated
+# (possibly Chinese) task title + intent. The orchestrator matches todos
+# by task_type, not by title prefix, so Chinese titles no longer leave
+# todos stuck in pending state.
+# Order matters: more specific types are checked before broader ones so
+# that e.g. "校验证据来源" maps to verify_evidence, not review_evidence.
+# Keywords are deliberately narrow (e.g. "回答" not "生成") to avoid
+# false matches across categories.
+_TASK_TYPE_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("search_sources", ("search", "搜集", "检索", "查找", "搜索", ZH_SEARCH, ZH_SUPPLEMENT, ZH_LATEST, ZH_NEWS, ZH_NEW_INFO)),
+    ("verify_evidence", ("verify", "check", "校验", "核实", "复核")),
+    ("review_evidence", ("evidence", "review", "extract", "证据", "抽取", "整理", "提取", "梳理")),
+    ("draft_answer", ("answer", "回答", "成稿")),
+    ("structure_report", ("report", "structure", "brief", "报告", "大纲", "结构")),
+    ("finance_assumptions", ("finance", "dcf", "valuation", "assumption", ZH_VALUATION, ZH_PROFIT_MARGIN, ZH_SINGLE_STORE, "假设", "模型")),
+)
+
+
+def _infer_task_type(title: str, intent: str) -> str:
+    """Map an LLM-generated task title (possibly Chinese) + intent to a
+    stable task_type slug. Returns 'other' when no keyword group matches.
+    The orchestrator matches todos by task_type, so this must stay in
+    sync with the task_type values used in _rule_based_plan."""
+    folded = (title or "").casefold()
+    for task_type, keywords in _TASK_TYPE_KEYWORDS:
+        if any(kw.casefold() in folded for kw in keywords):
+            return task_type
+    # Fall back to intent-based inference when keywords don't match.
+    intent_map = {
+        "new_research_needed": "search_sources",
+        "finance_analysis_needed": "finance_assumptions",
+        "report_generation_needed": "structure_report",
+        "local_evidence_qa": "review_evidence",
+    }
+    return intent_map.get(intent, "other")
 
 
 def _parse_extractor_response(content: str) -> list[dict[str, Any]]:
@@ -480,6 +553,15 @@ def _parse_extractor_response(content: str) -> list[dict[str, Any]]:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _to_float(value: Any) -> float:
+    """Coerce a value to float, returning 0.0 on failure. Used by the
+    Verifier to read confidence scores that may arrive as str/None."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _contains_any(text: str, terms: tuple[str, ...]) -> bool:

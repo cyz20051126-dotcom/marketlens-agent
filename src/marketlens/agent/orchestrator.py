@@ -148,6 +148,7 @@ class MarketLensAgentOrchestrator:
                     intent=task["intent"],
                     query=task["query"],
                     assigned_agent=planner.name,
+                    task_type=task.get("task_type", ""),
                 )
             trace.record(
                 planner.name,
@@ -179,7 +180,7 @@ class MarketLensAgentOrchestrator:
             )
             _complete_todo(
                 todo,
-                "Search new sources",
+                "search_sources",
                 f"Web search returned {len(search_results_list)} results.",
                 _extract_urls(search_results_list),
             )
@@ -212,7 +213,7 @@ class MarketLensAgentOrchestrator:
                 candidates = extract_result.get("evidence", [])
                 _complete_todo(
                     todo,
-                    "Review local evidence",
+                    "review_evidence",
                     f"Extracted {len(candidates)} candidate evidence.",
                     _extract_urls(candidates),
                 )
@@ -227,21 +228,33 @@ class MarketLensAgentOrchestrator:
                     extract_latency,
                 )
 
-                # Verifier (rules) — approve / reject each candidate
+                # Verifier (rules) — approve / reject each candidate.
+                # Duplicate URL detection: skip candidates whose source_url
+                # was already verified in this batch, marking them
+                # needs_review so they don't silently inflate evidence.
                 verifier = VerifierAgent()
                 agents_invoked.append(verifier.name)
                 verify_start = time.perf_counter()
                 verified_evidence: list[dict[str, Any]] = []
+                seen_urls: set[str] = set()
                 for candidate in candidates:
+                    candidate_url = str(candidate.get("source_url", "")).strip()
+                    if candidate_url and candidate_url in seen_urls:
+                        candidate["review_status"] = "needs_review"
+                        candidate["verification_status"] = "rejected"
+                        candidate["verification_reason"] = "duplicate source_url in batch"
+                        continue
                     verified = verifier.run({"evidence": candidate})
                     if verified.get("review_status") == "reviewed":
                         verified_evidence.append(verified)
+                        if candidate_url:
+                            seen_urls.add(candidate_url)
                 verify_latency = max(
                     int((time.perf_counter() - verify_start) * 1000), 1
                 )
                 _complete_todo(
                     todo,
-                    "Verify evidence",
+                    "verify_evidence",
                     f"Approved {len(verified_evidence)}/{len(candidates)} candidates.",
                     _extract_urls(verified_evidence),
                 )
@@ -305,7 +318,7 @@ class MarketLensAgentOrchestrator:
         writer_latency = max(int((time.perf_counter() - writer_start) * 1000), 1)
         _complete_todo(
             todo,
-            "Draft final answer",
+            "draft_answer",
             "Cited {} evidence IDs.".format(
                 len(writer_result["supporting_evidence_ids"])
             ),
@@ -378,12 +391,15 @@ def _record_tool_call(
 
 
 def _complete_todo(
-    todo: TodoBoard, title_prefix: str, result_summary: str, source_urls: list[str]
+    todo: TodoBoard, task_type: str, result_summary: str, source_urls: list[str]
 ) -> None:
-    """Mark the first todo whose title starts with title_prefix as completed.
-    No-op when no matching todo exists (e.g. Planner didn't run)."""
+    """Mark the first todo with matching task_type as completed. Falls back
+    to no-op when no matching todo exists (e.g. Planner didn't run, or
+    task_type couldn't be inferred). task_type matching is stable across
+    Chinese/English titles; the old title-prefix approach left LLM-generated
+    Chinese todos stuck in pending state."""
     for item in todo.items():
-        if item.title.startswith(title_prefix) and item.status != "completed":
+        if item.task_type == task_type and item.status != "completed":
             todo.complete(item.todo_id, result_summary, source_urls=source_urls)
             return
 

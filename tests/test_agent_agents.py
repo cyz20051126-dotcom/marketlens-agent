@@ -777,12 +777,12 @@ def test_extractor_does_not_treat_search_metadata_as_source():
     assert extraction["evidence"] == []
 
 
-# --- VerifierAgent (unchanged) ---------------------------------------------
+# --- VerifierAgent ---------------------------------------------------------
 
 
 def test_verifier_approves_valid_evidence_and_rejects_bad_url():
-    """VerifierAgent (rule-based, no LLM) checks URL validity and marks
-    review_status accordingly."""
+    """VerifierAgent (rule-based, no LLM) checks URL validity, source_type
+    whitelist, confidence threshold, and marks review_status accordingly."""
     valid_evidence = valid_evidence_dict("EV-001")
     verifier = VerifierAgent()
 
@@ -795,3 +795,76 @@ def test_verifier_approves_valid_evidence_and_rejects_bad_url():
     assert approved["verification_status"] == "approved"
     assert rejected["review_status"] == "rejected"
     assert rejected["verification_status"] == "rejected"
+
+
+def test_verifier_rejects_invalid_source_type():
+    """Codex finding #3: source_type not in ALLOWED_SOURCE_TYPES must be
+    rejected, not silently marked reviewed."""
+    verifier = VerifierAgent()
+    rejected = verifier.run(
+        {"evidence": {**valid_evidence_dict("EV-TYPE"), "source_type": "blog"}}
+    )
+    assert rejected["review_status"] == "rejected"
+    assert "source_type" in rejected["verification_reason"]
+
+
+def test_verifier_rejects_low_confidence():
+    """Codex finding #3: confidence below the 0.5 threshold must be rejected."""
+    verifier = VerifierAgent()
+    rejected = verifier.run(
+        {"evidence": {**valid_evidence_dict("EV-LOW"), "confidence": 0.2}}
+    )
+    assert rejected["review_status"] == "rejected"
+    assert "confidence" in rejected["verification_reason"]
+
+
+def test_verifier_accepts_boundary_confidence():
+    """Confidence exactly at the 0.5 threshold should be approved."""
+    verifier = VerifierAgent()
+    approved = verifier.run(
+        {"evidence": {**valid_evidence_dict("EV-BOUNDARY"), "confidence": 0.5}}
+    )
+    assert approved["review_status"] == "reviewed"
+
+
+def test_verifier_records_rejection_reason():
+    """When rejecting, verification_reason should explain which checks failed."""
+    verifier = VerifierAgent()
+    rejected = verifier.run(
+        {
+            "evidence": {
+                **valid_evidence_dict("EV-MULTI"),
+                "source_type": "blog",
+                "confidence": 0.1,
+                "source_url": "not-a-url",
+            }
+        }
+    )
+    reason = rejected["verification_reason"]
+    assert "source_type" in reason
+    assert "confidence" in reason
+    assert "source_url" in reason
+
+
+def test_infer_task_type_maps_chinese_titles():
+    """Codex finding #4: LLM-generated Chinese titles must map to stable
+    task_type slugs so the orchestrator can match todos without relying
+    on English title prefixes."""
+    from marketlens.agent.agents import _infer_task_type
+
+    assert _infer_task_type("搜索瑞幸最新新闻", "new_research_needed") == "search_sources"
+    assert _infer_task_type("抽取瑞幸财务数据", "local_evidence_qa") == "review_evidence"
+    assert _infer_task_type("构建DCF估值模型", "finance_analysis_needed") == "finance_assumptions"
+    assert _infer_task_type("撰写最终研究报告", "report_generation_needed") == "structure_report"
+    assert _infer_task_type("校验证据来源是否可信", "local_evidence_qa") == "verify_evidence"
+    assert _infer_task_type("生成最终回答", "local_evidence_qa") == "draft_answer"
+
+
+def test_infer_task_type_falls_back_to_intent():
+    """When no keyword matches, task_type falls back to intent-based mapping."""
+    from marketlens.agent.agents import _infer_task_type
+
+    assert _infer_task_type("某个无法分类的标题", "new_research_needed") == "search_sources"
+    assert _infer_task_type("某个无法分类的标题", "finance_analysis_needed") == "finance_assumptions"
+    assert _infer_task_type("某个无法分类的标题", "local_evidence_qa") == "review_evidence"
+    assert _infer_task_type("某个无法分类的标题", "report_generation_needed") == "structure_report"
