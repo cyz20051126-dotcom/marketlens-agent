@@ -111,10 +111,18 @@ class PlannerAgent(BaseAgent):
         intent = _text(payload.get("intent")) or "local_evidence_qa"
         system_prompt = (
             "\u4f60\u662f\u7814\u7a76\u89c4\u5212\u5668\u3002\u6839\u636e\u7528\u6237\u95ee\u9898\u548c\u610f\u56fe\uff0c"
-            "\u62c6\u89e3\u6210 3-5 \u4e2a\u5177\u4f53\u7814\u7a76\u4efb\u52a1\u3002\n"
-            "\u6bcf\u4e2a\u4efb\u52a1\u5305\u542b title\uff08\u4efb\u52a1\u6807\u9898\uff09\u3001"
-            "intent\uff08\u4efb\u52a1\u610f\u56fe\uff09\u3001query\uff08\u4efb\u52a1\u67e5\u8be2\u8bcd\uff09\u3002\n"
-            '\u8fd4\u56de JSON: {"tasks": [{"title": "...", "intent": "...", "query": "..."}]}'
+            "\u89c4\u5212 3-5 \u4e2a\u6267\u884c\u6b65\u9aa4\u3002\n"
+            "\u6bcf\u4e2a\u4efb\u52a1\u5305\u542b title\uff08\u6b65\u9aa4\u6807\u9898\uff09\u3001"
+            "intent\uff08\u4efb\u52a1\u610f\u56fe\uff09\u3001query\uff08\u4efb\u52a1\u67e5\u8be2\u8bcd\uff09\u3001"
+            "task_type\uff08\u6b65\u9aa4\u7c7b\u578b\uff09\u3002\n"
+            "task_type \u5fc5\u987b\u662f\u4ee5\u4e0b\u679a\u4e3e\u4e4b\u4e00\uff1a\n"
+            "- search_sources: \u641c\u7d22\u65b0\u6765\u6e90\n"
+            "- review_evidence: \u590d\u6838\u672c\u5730\u8bc1\u636e\n"
+            "- verify_evidence: \u6821\u9a8c\u8bc1\u636e\n"
+            "- finance_assumptions: \u751f\u6210\u91d1\u878d\u5047\u8bbe\n"
+            "- structure_report: \u7ec4\u7ec7\u62a5\u544a\u7ed3\u6784\n"
+            "- draft_answer: \u64b0\u5199\u6700\u7ec8\u56de\u7b54\n"
+            '\u8fd4\u56de JSON: {"tasks": [{"title": "...", "intent": "...", "query": "...", "task_type": "..."}]}'
         )
         user_prompt = f"\u95ee\u9898: {query}\n\u610f\u56fe: {intent}"
         result = self.llm_client.complete(
@@ -434,13 +442,27 @@ def _parse_triage_response(content: str, query: str) -> tuple[str, str]:
     return "local_evidence_qa", query
 
 
+_VALID_TASK_TYPES = frozenset({
+    "search_sources",
+    "review_evidence",
+    "verify_evidence",
+    "finance_assumptions",
+    "structure_report",
+    "draft_answer",
+})
+
+
 def _parse_planner_response(
     content: str, query: str, intent: str
 ) -> list[dict[str, str]]:
     """Parse LLM JSON response for PlannerAgent. Falls back to rule-based
-    task generation on parse failure. Infers a stable task_type for each
-    task so the orchestrator can match todos without relying on the
-    human-readable title (which may be Chinese when the LLM runs)."""
+    task generation on parse failure. Each task gets a stable task_type
+    so the orchestrator can match todos without relying on the
+    human-readable title (which may be Chinese when the LLM runs).
+
+    The LLM is asked to return a task_type from a fixed enum. If it does,
+    we trust it. If it doesn't (or returns an invalid value), we fall
+    back to _infer_task_type keyword matching."""
     try:
         data = json.loads(content)
         raw_tasks = data.get("tasks", [])
@@ -453,7 +475,11 @@ def _parse_planner_response(
                 task_intent = _text(raw.get("intent")) or intent
                 task_query = _text(raw.get("query")) or query
                 if title:
-                    task_type = _infer_task_type(title, task_intent)
+                    raw_task_type = _text(raw.get("task_type"))
+                    if raw_task_type in _VALID_TASK_TYPES:
+                        task_type = raw_task_type
+                    else:
+                        task_type = _infer_task_type(title, task_intent)
                     tasks.append(
                         {
                             "title": title,

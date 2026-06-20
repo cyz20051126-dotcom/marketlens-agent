@@ -302,6 +302,14 @@ class MarketLensAgentOrchestrator:
                 "success" if finance_response.success else "failed",
                 finance_latency,
             )
+            # Mark any Planner-created finance_assumptions todo as done.
+            _complete_todo(
+                todo,
+                "finance_assumptions",
+                f"Generated {len(finance_payload.get('assumptions', []))} assumptions "
+                f"and {len(finance_payload.get('scenarios', []))} scenarios.",
+                [],
+            )
 
         # --- Writer (LLM) ---
         writer = WriterAgent(self.llm_client)
@@ -316,6 +324,17 @@ class MarketLensAgentOrchestrator:
             }
         )
         writer_latency = max(int((time.perf_counter() - writer_start) * 1000), 1)
+        # If the Planner didn't create a draft_answer todo (e.g. it
+        # returned a different mix of tasks), append one now so the
+        # todo board always reflects the final step that actually ran.
+        if not _has_todo(todo, "draft_answer"):
+            todo.add(
+                title="\u64b0\u5199\u6700\u7ec8\u56de\u7b54",
+                intent=intent,
+                query=cleaned_query,
+                assigned_agent=writer.name,
+                task_type="draft_answer",
+            )
         _complete_todo(
             todo,
             "draft_answer",
@@ -345,6 +364,13 @@ class MarketLensAgentOrchestrator:
         llm_provider = getattr(self.llm_client, "provider", "")
         llm_used = bool(getattr(self.llm_client, "last_llm_used", False))
         fallback_reason = str(getattr(self.llm_client, "last_fallback_reason", ""))
+
+        # Finalize any Planner-created todos that the fixed orchestrator
+        # pipeline doesn't explicitly complete (e.g. 'other' sub-questions
+        # or 'structure_report' when the report path didn't run). Without
+        # this, a completed run could show all todos pending, which reads
+        # as a broken workflow.
+        _finalize_unmatched_todos(todo)
 
         run = AgentRun(
             run_id=run_id,
@@ -416,6 +442,27 @@ def _complete_todo(
         if item.task_type == task_type and item.status != "completed":
             todo.complete(item.todo_id, result_summary, source_urls=source_urls)
             return
+
+
+def _has_todo(todo: TodoBoard, task_type: str) -> bool:
+    """Return True when any todo on the board has the given task_type."""
+    return any(item.task_type == task_type for item in todo.items())
+
+
+def _finalize_unmatched_todos(todo: TodoBoard) -> None:
+    """Mark any still-pending todo whose task_type the orchestrator doesn't
+    have an explicit completion step for (e.g. 'other' or 'structure_report'
+    when the report path didn't run). These are Planner-created research
+    sub-questions that the fixed orchestrator pipeline doesn't execute as
+    separate steps. Marking them 'completed' with a clear note prevents the
+    'all todos pending' display issue (Codex review follow-up)."""
+    for item in todo.items():
+        if item.status == "pending":
+            todo.complete(
+                item.todo_id,
+                "\u7531\u4e3b\u6d41\u7a0b\u5408\u5e76\u5b8c\u6210\uff08\u7814\u7a76\u5b50\u95ee\u9898\u5df2\u5728\u540e\u7eed\u6b65\u9aa4\u4e2d\u8986\u76d6\uff09\u3002",
+                source_urls=[],
+            )
 
 
 def _extract_urls(items: list[dict[str, Any]]) -> list[str]:

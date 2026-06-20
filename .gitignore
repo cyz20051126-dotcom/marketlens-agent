@@ -38,3 +38,4 @@ docs/application_materials/
 docs/interview_talking_points.md
 scripts/build_agent_resume_docx.py
 scripts/build_resume_docx.py
+search_cache/

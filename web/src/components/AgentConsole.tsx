@@ -71,7 +71,7 @@ function AgentConsole() {
         </h1>
         <p className="hero-subtitle">
           对话入口会先判断问题类型，再调用证据库、DuckDuckGo 真搜索、Finance Lens
-          和 Writer，最后留下可复盘的工具调用与轨迹。Triage/Planner/Extractor/Writer 全部走 DeepSeek LLM。
+          和 Writer，最后留下可复盘的工具调用与轨迹。配置 DeepSeek key 后 Triage/Planner/Extractor/Writer 走 DeepSeek LLM，失败自动降级。
         </p>
 
         <div className="agent-input-shell">
