@@ -10,6 +10,25 @@ const metricLabels: Record<string, string> = {
   franchise_network_signal: "加盟网络",
   revenue_growth_signal: "收入增长",
   valuation_risk_signal: "估值风险",
+  tax_rate: "税率",
+  reinvestment_rate: "再投资率",
+  per_store_gmv: "单店年 GMV",
+  per_store_revenue: "单店年收入",
+  store_level_margin: "店级利润率",
+  franchise_ratio: "加盟占比",
+  same_store_growth: "同店增长",
+};
+
+const scenarioLabels: Record<string, string> = {
+  Conservative: "保守",
+  Base: "基准",
+  Upside: "乐观",
+  LowDiscount_HighTerminal: "低折现/高永续",
+  MidDiscount_MidTerminal: "中折现/中永续",
+  HighDiscount_LowTerminal: "高折现/低永续",
+  LowStores_HighGMV: "少店/高单店",
+  MidStores_MidGMV: "中店/中单店",
+  HighStores_LowGMV: "多店/低单店",
 };
 
 function formatMetric(value: number, unit: string) {
@@ -50,7 +69,7 @@ function FinanceLens({ run }: { run: AgentRun }) {
             <div className="scenario-list">
               {run.finance_scenarios.map((scenario) => (
                 <article key={scenario.scenario_id}>
-                  <strong>{scenario.scenario_name}</strong>
+                  <strong>{scenarioLabels[scenario.scenario_name] ?? scenario.scenario_name}</strong>
                   <span>增长 {(scenario.revenue_growth * 100).toFixed(1)}%</span>
                   <span>利润率 {(scenario.operating_margin * 100).toFixed(1)}%</span>
                   <b>{scenario.result_value.toFixed(2)}</b>

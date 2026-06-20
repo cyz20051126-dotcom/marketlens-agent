@@ -28,9 +28,19 @@ const intentLabels: Record<string, string> = {
 const agentLabels: Record<string, string> = {
   TriageAgent: "意图判断 Agent",
   PlannerAgent: "任务规划 Agent",
+  SearchAgent: "搜索 Agent",
+  EvidenceExtractorAgent: "证据抽取 Agent",
+  VerifierAgent: "证据校验 Agent",
   FinanceLensAgent: "金融分析 Agent",
   WriterAgent: "写作 Agent",
   EvidenceSearchTool: "证据搜索工具",
+};
+
+const toolLabels: Record<string, string> = {
+  EvidenceSearchTool: "证据搜索工具",
+  WebSearchTool: "网页搜索工具",
+  FinanceModelTool: "金融模型工具",
+  EvidenceStoreTool: "证据入库工具",
 };
 
 function displaySummary(summary: string) {
@@ -102,7 +112,7 @@ function AgentTrace({ run }: { run: AgentRun }) {
           {run.tool_calls.map((call) => (
             <article className="tool-item" key={`${call.tool_name}-${call.input_summary}`}>
               <div>
-                <strong>{call.tool_name}</strong>
+                <strong>{toolLabels[call.tool_name] ?? call.tool_name}</strong>
                 <p>{displayOutputSummary(call.output_summary)}</p>
               </div>
               <span>{statusLabels[call.status] ?? call.status}</span>
