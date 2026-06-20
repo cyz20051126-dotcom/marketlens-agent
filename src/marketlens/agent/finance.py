@@ -37,7 +37,7 @@ def load_finance_metrics(path: Path) -> list[FinanceMetric]:
 
 class FinanceModelTool:
     name = "FinanceModelTool"
-    description = "Build assumption and scenario outputs covering unit economics, expansion, DCF, and sensitivity matrices."
+    description = "Build assumption and scenario outputs covering unit economics, expansion, DCF-style sensitivity proxy, and sensitivity matrices."
 
     def __init__(self, metrics: list[FinanceMetric]) -> None:
         self.metrics = list(metrics)
@@ -355,6 +355,11 @@ def _scenario(
     axis_y: str,
     notes: str,
 ) -> FinanceScenario:
+    # This is a DCF-style sensitivity proxy, not a full DCF model.
+    # It does not forecast 5-year revenue/EBIT/FCF or compute equity value.
+    # result_value is a relative sensitivity indicator: how a growth x margin
+    # combo maps onto a Gordon-style perpetuity denominator. Use it to compare
+    # scenarios, not as an absolute valuation.
     denominator = max(discount_rate - terminal_growth, 0.01)
     result_value = ((1 + revenue_growth) * operating_margin) / denominator
     return FinanceScenario(

@@ -22,7 +22,7 @@ function AgentConsole() {
   const [query, setQuery] = useState(starterQuestions[1]);
   const [run, setRun] = useState<AgentRun>(demoRun as AgentRun);
   const [isLoading, setIsLoading] = useState(false);
-  const [notice, setNotice] = useState("内置演示数据来自真 DeepSeek + DuckDuckGo 运行。点击运行可实时调用本地 API。");
+  const [notice, setNotice] = useState("内置演示数据保留真实 Agent trace。配置 DeepSeek key 后点击运行可实时调用 LLM；搜索失败会自动降级。");
 
   async function submit(nextQuery = query) {
     const trimmed = nextQuery.trim();
