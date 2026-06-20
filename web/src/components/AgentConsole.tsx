@@ -18,15 +18,18 @@ const intentLabels: Record<string, string> = {
   local_evidence_qa: "证据问答",
 };
 
+// Read LLM provenance straight from the demo JSON. If the JSON was
+// rebuilt without a DeepSeek key (llm_used=false), the frontend shows
+// the amber fallback badge honestly instead of hardcoding "deepseek".
+// If the JSON predates the provenance fields entirely, default to
+// llm_used=false so we never overstate that the LLM ran.
 const demoRun: AgentRun = {
   ...(demoRunRaw as Omit<AgentRun, "llm_provider" | "llm_used" | "fallback_reason">),
-  // Demo JSON was captured before the LLM provenance fields existed. The
-  // demo shows a real DeepSeek run, so we mark llm_used=true with the
-  // deepseek provider. When the user clicks run with a live API key,
-  // the fresh response overwrites these with the real values.
-  llm_provider: "deepseek",
-  llm_used: true,
-  fallback_reason: "",
+  llm_provider: (demoRunRaw as { llm_provider?: string }).llm_provider ?? "",
+  llm_used: (demoRunRaw as { llm_used?: boolean }).llm_used ?? false,
+  fallback_reason:
+    (demoRunRaw as { fallback_reason?: string }).fallback_reason ??
+    "provenance_missing_in_demo_json",
 };
 
 function AgentConsole() {
