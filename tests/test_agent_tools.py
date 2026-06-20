@@ -374,3 +374,92 @@ def test_finance_model_tool_returns_error_for_unknown_brand():
 
     assert response.success is False
     assert "no finance metrics" in response.error.lower()
+
+
+# --- Spec §7.1 coverage: tax rate, reinvestment, unit economics, expansion,
+#     and three sensitivity matrices. ---
+
+
+def test_finance_model_tool_includes_tax_rate_and_reinvestment_assumptions():
+    """Spec §7.1.3: DCF assumptions must include tax_rate and reinvestment_rate."""
+    tool = FinanceModelTool(load_finance_metrics(FINANCE_METRICS_PATH))
+    response = tool.run({"brand_id": "luckin"})
+
+    assert response.success
+    names = {a["metric_name"] for a in response.data["assumptions"]}
+    assert "tax_rate" in names
+    assert "reinvestment_rate" in names
+
+    tax = next(a for a in response.data["assumptions"] if a["metric_name"] == "tax_rate")
+    assert 0.0 < tax["metric_value"] <= 0.25
+    assert tax["confidence"] < 0.7  # labeled as assumption
+
+    reinvest = next(
+        a for a in response.data["assumptions"] if a["metric_name"] == "reinvestment_rate"
+    )
+    assert 0.08 <= reinvest["metric_value"] <= 0.25
+
+
+def test_finance_model_tool_includes_unit_economics_for_brand_with_stores():
+    """Spec §7.1.1: unit economics (per_store_gmv, per_store_revenue, store_level_margin)
+    for brands that have store count data."""
+    tool = FinanceModelTool(load_finance_metrics(FINANCE_METRICS_PATH))
+    response = tool.run({"brand_id": "luckin"})
+
+    names = {a["metric_name"] for a in response.data["assumptions"]}
+    assert "per_store_gmv" in names
+    assert "per_store_revenue" in names
+    assert "store_level_margin" in names
+
+    gmv = next(a for a in response.data["assumptions"] if a["metric_name"] == "per_store_gmv")
+    assert gmv["unit"] == "RMB/year"
+    assert gmv["confidence"] <= 0.4  # clearly an estimate
+
+
+def test_finance_model_tool_skips_unit_economics_for_brand_without_stores():
+    """Brands without store count data should not get unit economics assumptions."""
+    tool = FinanceModelTool(load_finance_metrics(FINANCE_METRICS_PATH))
+    response = tool.run({"brand_id": "chagee"})
+
+    names = {a["metric_name"] for a in response.data["assumptions"]}
+    assert "per_store_gmv" not in names
+
+
+def test_finance_model_tool_includes_expansion_assumptions_for_luckin():
+    """Spec §7.1.2: expansion model — franchise_ratio and same_store_growth."""
+    tool = FinanceModelTool(load_finance_metrics(FINANCE_METRICS_PATH))
+    response = tool.run({"brand_id": "luckin"})
+
+    names = {a["metric_name"] for a in response.data["assumptions"]}
+    assert "franchise_ratio" in names
+    assert "same_store_growth" in names
+
+    ratio = next(
+        a for a in response.data["assumptions"] if a["metric_name"] == "franchise_ratio"
+    )
+    assert 0 < ratio["metric_value"] < 1  # partnership / total
+
+
+def test_finance_model_tool_includes_three_sensitivity_matrices():
+    """Spec §7.1.4: three sensitivity matrices — growth vs margin, discount vs
+    terminal, store count vs per-store GMV. Each matrix has 3 scenarios,
+    so total scenarios = 9."""
+    tool = FinanceModelTool(load_finance_metrics(FINANCE_METRICS_PATH))
+    response = tool.run({"brand_id": "luckin"})
+
+    scenarios = response.data["scenarios"]
+    assert len(scenarios) == 9
+
+    axis_pairs = {(s["sensitivity_axis_x"], s["sensitivity_axis_y"]) for s in scenarios}
+    assert ("revenue_growth", "operating_margin") in axis_pairs
+    assert ("discount_rate", "terminal_growth") in axis_pairs
+    assert ("store_count_growth", "per_store_gmv") in axis_pairs
+
+    # Original 3 still present
+    names = {s["scenario_name"] for s in scenarios}
+    assert {"Conservative", "Base", "Upside"}.issubset(names)
+
+    # All result_values are positive and finite
+    for s in scenarios:
+        assert s["result_value"] > 0
+
