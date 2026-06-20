@@ -98,6 +98,37 @@ def test_orchestrator_answers_local_evidence_question(tmp_path):
     assert (tmp_path / "sessions" / f"{run.run_id}.json").exists()
 
 
+def test_orchestrator_records_fallback_llm_provenance(tmp_path):
+    """When the orchestrator runs with FallbackLLMClient (no DeepSeek key),
+    AgentRun surfaces llm_provider=fallback, llm_used=False, and a
+    fallback_reason (Codex review finding #1)."""
+    orchestrator = make_orchestrator(tmp_path, llm_client=FallbackLLMClient())
+
+    run = orchestrator.answer(MARGIN_QUERY)
+
+    assert run.llm_provider == "fallback"
+    assert run.llm_used is False
+    assert run.fallback_reason  # non-empty: "no_api_key" by default
+    payload = run.to_dict()
+    assert payload["llm_provider"] == "fallback"
+    assert payload["llm_used"] is False
+
+
+def test_orchestrator_records_mock_llm_provenance(tmp_path):
+    """A custom LLM client without last_* attrs still serializes cleanly —
+    getattr defaults kick in and the run reports provider + llm_used=False."""
+    orchestrator = make_orchestrator(
+        tmp_path, llm_client=MockLLMClient(response="mock answer")
+    )
+
+    run = orchestrator.answer(MARGIN_QUERY)
+
+    # MockLLMClient has provider="mock" but no last_llm_used attribute,
+    # so the orchestrator's getattr default (False) applies.
+    assert run.llm_provider == "mock"
+    assert run.llm_used is False
+
+
 def test_orchestrator_local_evidence_path_skips_search(tmp_path):
     """When local evidence is sufficient (>= 2 strict matches), SearchAgent
     is not invoked and WebSearchTool is not in the tool_calls list.

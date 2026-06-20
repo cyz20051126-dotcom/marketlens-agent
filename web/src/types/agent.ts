@@ -76,4 +76,7 @@ export type AgentRun = {
   finance_assumptions: FinanceAssumption[];
   finance_scenarios: FinanceScenario[];
   error_message: string;
+  llm_provider: string;
+  llm_used: boolean;
+  fallback_reason: string;
 };

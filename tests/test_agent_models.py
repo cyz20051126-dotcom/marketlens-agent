@@ -65,6 +65,42 @@ def test_agent_run_serializes_nested_records():
     assert payload["tool_calls"][0]["tool_name"] == "EvidenceSearchTool"
     assert payload["trace_events"][0]["agent_name"] == "TriageAgent"
     assert payload["todo_items"][0]["status"] == "completed"
+    # LLM provenance defaults (not supplied above) must serialize.
+    assert payload["llm_provider"] == ""
+    assert payload["llm_used"] is False
+    assert payload["fallback_reason"] == ""
+
+
+def test_agent_run_records_llm_provenance_fields():
+    """AgentRun exposes llm_provider / llm_used / fallback_reason so the
+    frontend can show whether the answer was LLM-generated or rule-generated
+    (Codex review finding #1)."""
+    run = AgentRun(
+        run_id="run_llm",
+        session_id="session_001",
+        user_query="query",
+        intent="local_evidence_qa",
+        started_at="2026-06-20T10:00:00+08:00",
+        completed_at="2026-06-20T10:00:05+08:00",
+        status="completed",
+        agents_invoked=["TriageAgent", "WriterAgent"],
+        tool_calls=[],
+        trace_events=[],
+        todo_items=[],
+        answer="answer",
+        supporting_evidence_ids=[],
+        finance_assumptions=[],
+        finance_scenarios=[],
+        error_message="",
+        llm_provider="deepseek",
+        llm_used=True,
+        fallback_reason="",
+    )
+
+    payload = run.to_dict()
+    assert payload["llm_provider"] == "deepseek"
+    assert payload["llm_used"] is True
+    assert payload["fallback_reason"] == ""
 
 
 def test_finance_assumption_links_back_to_evidence():

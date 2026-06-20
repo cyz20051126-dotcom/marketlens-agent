@@ -462,6 +462,43 @@ def test_writer_includes_finance_disclaimer_when_finance_assumptions_exist():
     assert ZH_NOT_INVESTMENT_ADVICE in result["answer"]
 
 
+def test_writer_system_prompt_forbids_fabricated_numbers():
+    """WriterAgent's system prompt must instruct the LLM to only use numbers
+    that appear in the supplied evidence/finance assumptions, and to mark
+    any trend or sensitivity discussion as qualitative (no fabricated
+    percentages like '20%-30%'). Codex review finding #5."""
+    captured: dict[str, str] = {}
+
+    class RecordingClient:
+        provider = "mock"
+
+        def complete(self, system_prompt, user_prompt, context=None):
+            captured["system_prompt"] = system_prompt
+            from marketlens.agent.llm import LLMResult
+            return LLMResult(content="recording", provider="mock")
+
+    search_tool = EvidenceSearchTool([evidence_row("EV-900")])
+    search_result = search_tool.run(
+        {"brand_id": "luckin", "query": ZH_PROFIT_MARGIN, "limit": 5}
+    )
+    WriterAgent(RecordingClient()).run(
+        {
+            "query": f"{ZH_LUCKIN}{ZH_PROFIT_MARGIN}?",
+            "intent": "local_evidence_qa",
+            "evidence": search_result.data["evidence"],
+            "finance": {},
+        }
+    )
+
+    prompt = captured["system_prompt"]
+    # Must mention the numeric discipline rule.
+    assert "\u6570\u5b57\u7eaa\u5f8b" in prompt or "数字纪律" in prompt
+    # Must explicitly forbid fabricated percentages.
+    assert "20%" in prompt or "20%-30%" in prompt
+    # Must require定性叙述 for sensitivity discussion.
+    assert "\u5b9a\u6027" in prompt or "定性" in prompt
+
+
 def test_writer_returns_evidence_insufficient_answer_without_evidence():
     """Without evidence, WriterAgent returns the insufficient-evidence message
     without calling LLM (short-circuit)."""

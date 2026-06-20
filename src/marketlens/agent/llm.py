@@ -12,6 +12,13 @@ import urllib.request
 class LLMResult:
     content: str
     provider: str
+    # True when the result came from the intended provider (e.g. DeepSeek).
+    # False when the client degraded to the fallback (no key, request
+    # failed, unsafe base URL). The orchestrator surfaces this on the
+    # AgentRun so the frontend can show whether the answer was
+    # LLM-generated or rule-generated.
+    llm_used: bool = True
+    fallback_reason: str = ""
 
 
 class LLMClient(Protocol):
@@ -30,9 +37,19 @@ class LLMClient(Protocol):
 class FallbackLLMClient:
     """Offline fallback. Echoes prompt when no context; builds a structured
     Chinese answer from evidence when context is supplied. Used when no
-    DeepSeek API key is present so demos still produce readable output."""
+    DeepSeek API key is present so demos still produce readable output.
+
+    Every result from this client carries llm_used=False so the
+    orchestrator and frontend can distinguish rule-generated answers
+    from real LLM output."""
 
     provider = "fallback"
+
+    def __init__(self, reason: str = "no_api_key") -> None:
+        self._reason = reason
+        # Orchestrator reads these after a run to populate AgentRun.
+        self.last_llm_used = False
+        self.last_fallback_reason = reason
 
     def complete(
         self,
@@ -41,11 +58,20 @@ class FallbackLLMClient:
         context: dict[str, Any] | None = None,
     ) -> LLMResult:
         if context and context.get("evidence"):
-            return LLMResult(
-                content=_fallback_answer_from_context(user_prompt, context),
-                provider=self.provider,
-            )
-        return LLMResult(content=user_prompt, provider=self.provider)
+            content = _fallback_answer_from_context(user_prompt, context)
+        else:
+            content = user_prompt
+        result = LLMResult(
+            content=content,
+            provider=self.provider,
+            llm_used=False,
+            fallback_reason=self._reason,
+        )
+        # Track the most recent call so the orchestrator can surface
+        # whether the answer was LLM-generated or rule-generated.
+        self.last_llm_used = result.llm_used
+        self.last_fallback_reason = result.fallback_reason
+        return result
 
 
 class DeepSeekLLMClient:
@@ -66,7 +92,10 @@ class DeepSeekLLMClient:
         self.model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.fallback = FallbackLLMClient()
+        self.fallback = FallbackLLMClient(reason="no_api_key")
+        # Orchestrator reads these after a run to populate AgentRun.
+        self.last_llm_used = False
+        self.last_fallback_reason = "no_call_made_yet"
 
     def complete(
         self,
@@ -74,8 +103,16 @@ class DeepSeekLLMClient:
         user_prompt: str,
         context: dict[str, Any] | None = None,
     ) -> LLMResult:
-        if not self.api_key or not _is_safe_base_url(self.base_url):
+        if not self.api_key:
+            self.last_llm_used = False
+            self.last_fallback_reason = "no_api_key"
             return self.fallback.complete(system_prompt, user_prompt, context)
+        if not _is_safe_base_url(self.base_url):
+            self.last_llm_used = False
+            self.last_fallback_reason = "unsafe_base_url"
+            return FallbackLLMClient(reason="unsafe_base_url").complete(
+                system_prompt, user_prompt, context
+            )
 
         payload = {
             "model": self.model,
@@ -102,9 +139,26 @@ class DeepSeekLLMClient:
                 raw = response.read().decode("utf-8")
             data = json.loads(raw)
             content = data["choices"][0]["message"]["content"]
-            return LLMResult(content=str(content), provider=self.provider)
-        except Exception:
-            return self.fallback.complete(system_prompt, user_prompt, context)
+            result = LLMResult(
+                content=str(content),
+                provider=self.provider,
+                llm_used=True,
+                fallback_reason="",
+            )
+            self.last_llm_used = result.llm_used
+            self.last_fallback_reason = result.fallback_reason
+            return result
+        except Exception as exc:
+            reason = f"request_failed: {type(exc).__name__}"
+            result = FallbackLLMClient(reason=reason).complete(
+                system_prompt, user_prompt, context
+            )
+            # FallbackLLMClient.complete already set its own last_* attrs,
+            # but those belong to the throwaway fallback instance. Update
+            # self so the orchestrator reads the DeepSeek client's state.
+            self.last_llm_used = False
+            self.last_fallback_reason = reason
+            return result
 
 
 class MockLLMClient:

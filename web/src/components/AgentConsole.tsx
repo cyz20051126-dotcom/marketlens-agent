@@ -1,6 +1,6 @@
 import { Bot, Play, RotateCcw, Sparkles } from "lucide-react";
 import { useState } from "react";
-import demoRun from "../data/agent_demo.json";
+import demoRunRaw from "../data/agent_demo.json";
 import type { AgentRun } from "../types/agent";
 import { AgentTrace } from "./AgentTrace";
 import { FinanceLens } from "./FinanceLens";
@@ -18,9 +18,20 @@ const intentLabels: Record<string, string> = {
   local_evidence_qa: "证据问答",
 };
 
+const demoRun: AgentRun = {
+  ...(demoRunRaw as Omit<AgentRun, "llm_provider" | "llm_used" | "fallback_reason">),
+  // Demo JSON was captured before the LLM provenance fields existed. The
+  // demo shows a real DeepSeek run, so we mark llm_used=true with the
+  // deepseek provider. When the user clicks run with a live API key,
+  // the fresh response overwrites these with the real values.
+  llm_provider: "deepseek",
+  llm_used: true,
+  fallback_reason: "",
+};
+
 function AgentConsole() {
   const [query, setQuery] = useState(starterQuestions[1]);
-  const [run, setRun] = useState<AgentRun>(demoRun as AgentRun);
+  const [run, setRun] = useState<AgentRun>(demoRun);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState("内置演示数据保留真实 Agent trace。配置 DeepSeek key 后点击运行可实时调用 LLM；搜索失败会自动降级。");
 
@@ -40,7 +51,7 @@ function AgentConsole() {
       setRun((await response.json()) as AgentRun);
       setNotice("已连接本地 Agent API。");
     } catch {
-      setRun(demoRun as AgentRun);
+      setRun(demoRun);
       setNotice("未检测到 API 服务，已展示内置演示运行。");
     } finally {
       setIsLoading(false);
@@ -89,6 +100,18 @@ function AgentConsole() {
           <div className="answer-meta">
             <span>{intentLabels[run.intent] ?? run.intent}</span>
             <small>{run.run_id}</small>
+            <span
+              className={`llm-badge ${run.llm_used ? "is-live" : "is-fallback"}`}
+              title={
+                run.llm_used
+                  ? `LLM provider: ${run.llm_provider || "unknown"}`
+                  : `Fallback (${run.fallback_reason || "unknown"})`
+              }
+            >
+              {run.llm_used
+                ? `LLM: ${run.llm_provider || "live"}`
+                : `降级: ${run.fallback_reason || "fallback"}`}
+            </span>
           </div>
           <p>{run.answer}</p>
           <div className="evidence-chip-row">

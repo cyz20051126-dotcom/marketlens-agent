@@ -856,6 +856,31 @@ h2 {
   color: var(--wine);
 }
 
+/* LLM provenance badge in the answer meta row. */
+.llm-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  cursor: help;
+}
+
+.llm-badge.is-live {
+  background: rgba(34, 139, 34, 0.12);
+  color: #1f6f1f;
+  border: 1px solid rgba(34, 139, 34, 0.35);
+}
+
+.llm-badge.is-fallback {
+  background: rgba(180, 90, 0, 0.12);
+  color: #8a4500;
+  border: 1px solid rgba(180, 90, 0, 0.35);
+}
+
 .workflow-panel {
   grid-column: 3;
   grid-row: 2 / span 2;

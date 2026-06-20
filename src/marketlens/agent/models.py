@@ -109,3 +109,9 @@ class AgentRun(SerializableRecord):
     finance_assumptions: list[FinanceAssumption]
     finance_scenarios: list[FinanceScenario]
     error_message: str = ""
+    # Codex finding #1: surface whether the run actually called the LLM
+    # or degraded to the fallback client, so the answer's trustworthiness
+    # is visible in the run record and the frontend.
+    llm_provider: str = ""
+    llm_used: bool = False
+    fallback_reason: str = ""

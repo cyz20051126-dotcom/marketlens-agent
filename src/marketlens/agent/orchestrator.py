@@ -335,6 +335,17 @@ class MarketLensAgentOrchestrator:
             writer_latency,
         )
 
+        # Aggregate LLM provenance: the 4 LLM-driven agents (Triage,
+        # Planner, Extractor, Writer) share self.llm_client. After the
+        # run we read the client's last_* attrs to surface whether the
+        # final answer was LLM-generated or rule-generated. DeepSeek with
+        # a valid key produces uniform state across all 4 calls; if any
+        # call degrades, the last_* attrs reflect the most recent
+        # degradation (which is what matters for the answer's provenance).
+        llm_provider = getattr(self.llm_client, "provider", "")
+        llm_used = bool(getattr(self.llm_client, "last_llm_used", False))
+        fallback_reason = str(getattr(self.llm_client, "last_fallback_reason", ""))
+
         run = AgentRun(
             run_id=run_id,
             session_id=session_id,
@@ -358,6 +369,9 @@ class MarketLensAgentOrchestrator:
                 for item in finance_payload.get("scenarios", [])
             ],
             error_message="",
+            llm_provider=llm_provider,
+            llm_used=llm_used,
+            fallback_reason=fallback_reason,
         )
         self.session_store.save_run(run)
         return run
